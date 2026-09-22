@@ -1,0 +1,29 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Credenciais e segredos
+docker/mosquitto/config/password.txt
+**/password.txt
+
+# Saídas locais da visão
+vision/diagnostico/
+vision/diagnostico_v03/
+vision/*.jpg
+vision/*.jpeg
+vision/*.png
+vision/*.csv
+vision/*.json
+
+# Exceção: imagens e arquivos selecionados para documentação
+!assets/images/*.jpg
+!assets/images/*.jpeg
+!assets/images/*.png
+
+# Editor / sistema
+.vscode/
+.DS_Store
+Thumbs.db
