@@ -1,7 +1,7 @@
 # PNAAT Hands-on — ESP-IDF v5.5.2 / ESP32-S3
-# Heltec WiFi LoRa 32 V4: 16 MB Flash (fabricante).
-CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
-CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+# A placa usada no hands-on foi identificada pelo bootloader com 8 MB de flash.
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="8MB"
 
 # Tabela necessária para OTA.
 CONFIG_PARTITION_TABLE_CUSTOM=y

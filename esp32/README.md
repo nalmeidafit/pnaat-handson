@@ -1,84 +1,123 @@
-# ESP32-S3 — esteira, contador físico e OTA de desenvolvimento
+# ESP32-S3 — sensor final, LEDs de inspeção e OTA
 
-Projeto para **ESP-IDF v5.5.2** e **Heltec WiFi LoRa 32 V4**.
+Projeto para **ESP-IDF v5.5.2** e ESP32-S3.
 
-O OTA foi incluído somente para facilitar o desenvolvimento quando a esteira está longe do PC. Não faz parte do conteúdo do workshop.
+## Funções atuais
 
-## Primeira gravação após adicionar OTA
+- E18-D80NK no final da esteira;
+- contagem física independente da câmera;
+- publicação do estado de presença do sensor;
+- recepção do resultado da visão por MQTT;
+- LED de peça aprovada e LED de peça rejeitada;
+- controle RUN/STOP da esteira;
+- OTA somente para facilitar o desenvolvimento.
 
-A tabela de partições mudou. Portanto, esta primeira instalação precisa ser feita por USB e com a flash apagada:
+## Sensor final
+
+O sensor publica dois tipos de informação:
+
+```text
+pnaat/sensor/presenca
+pnaat/contagem/sensor
+```
+
+Exemplos:
+
+```json
+{"presente":true,"source":"sensor_final"}
+```
+
+```json
+{"count":17,"source":"sensor_final"}
+```
+
+O contador é incrementado somente quando o sensor passa de livre para peça presente.
+
+## Resultado da visão e LEDs
+
+O ESP32 se inscreve em:
+
+```text
+pnaat/visao/resultado
+```
+
+Quando a Raspberry publicar, por exemplo:
+
+```json
+{"id_camera":18,"resultado":"APROVADA","confianca":0.93}
+```
+
+o LED APROVADA é ligado e o LED REJEITADA é desligado.
+
+Para:
+
+```json
+{"id_camera":19,"resultado":"REJEITADA","confianca":0.88}
+```
+
+o LED REJEITADA é ligado e o LED APROVADA é desligado.
+
+Os LEDs mostram o **último resultado recebido da câmera** e ficam nesse estado até chegar o próximo resultado. Se o resultado for desconhecido ou `NAO_CALIBRADO`, ambos são desligados.
+
+## Configuração dos LEDs
+
+Abra:
 
 ```powershell
-idf.py set-target esp32s3
 idf.py menuconfig
+```
+
+e vá para:
+
+```text
+PNAAT Hands-on
+  → Indicador visual da inspeção
+```
+
+Habilite o indicador e configure:
+
+- GPIO do LED APROVADA;
+- GPIO do LED REJEITADA;
+- nível lógico ativo.
+
+Os valores 6 e 7 existentes no menu são apenas defaults de configuração. Confirme GPIOs realmente livres na placa antes de conectar os LEDs.
+
+Para LEDs comuns ligados do GPIO ao GND, use um resistor em série adequado e nível ativo `1`.
+
+## ESP32-S3 fixo
+
+O `CMakeLists.txt` força o target `esp32s3` para este projeto. Não é necessário executar `set-target` a cada compilação.
+
+## Flash
+
+O hardware usado no projeto foi detectado pelo próprio ESP32-S3 com **8 MB** de flash. O `sdkconfig.defaults` foi atualizado para 8 MB.
+
+A tabela OTA continua usando:
+
+```text
+factory = 2 MB
+ota_0   = 2 MB
+ota_1   = 2 MB
+```
+
+## Primeira gravação após mudança de tabela/configuração
+
+Se ainda estiver migrando de uma configuração anterior:
+
+```powershell
+idf.py fullclean
 idf.py build
 idf.py -p COMx erase-flash
 idf.py -p COMx flash monitor
 ```
 
-Depois dessa gravação, as próximas versões da aplicação podem ser enviadas por OTA.
+Depois disso as próximas versões podem seguir pelo OTA já configurado.
 
-> A Heltec WiFi LoRa 32 V4 possui 16 MB de flash; este projeto usa três partições de aplicação de 2 MB (`factory`, `ota_0`, `ota_1`).
-
-## Preparar o PC para deploy OTA
-
-Uma única vez:
-
-```powershell
-python -m pip install -r tools\requirements.txt
-Copy-Item tools\ota_config.example.json tools\ota_config.json
-```
-
-Edite `tools\ota_config.json` e coloque o IP do Mosquitto, usuário e senha. Esse arquivo está no `.gitignore`.
-
-## Atualizar por OTA
-
-No terminal ESP-IDF dentro da pasta `esp32`:
+## OTA
 
 ```powershell
 idf.py build
 python tools\ota_deploy.py
 ```
 
-O script descobre o IP local do PC, abre temporariamente a porta HTTP `8070`, serve `build/pnaat_esteira.bin` e publica via MQTT:
-
-```json
-{
-  "cmd": "OTA_UPDATE",
-  "url": "http://IP_DO_PC:8070/pnaat_esteira.bin"
-}
-```
-
-O ESP32 para a esteira antes de iniciar a atualização, grava a nova imagem na partição OTA inativa e reinicia quando a validação do binário termina.
-
-### VS Code
-
-Abrindo a pasta `esp32` como workspace, use:
-
-```text
-Terminal → Run Task → PNAAT: OTA Deploy
-```
-
-Essa task executa primeiro o build e depois o deploy OTA.
-
-## Status OTA
-
-O ESP32 publica:
-
-```text
-pnaat/ota/status
-```
-
-Estados principais:
-
-```text
-IDLE
-STARTING
-SUCCESS_REBOOTING
-FAILED
-START_FAILED
-```
-
-## Observação de segurança
-
-Esta revisão permite **HTTP sem TLS** exclusivamente para desenvolvimento em rede local. Para produção, o servidor deve usar HTTPS com verificação de certificado.
+O OTA permanece uma ferramenta de desenvolvimento e não faz parte do conteúdo do workshop.

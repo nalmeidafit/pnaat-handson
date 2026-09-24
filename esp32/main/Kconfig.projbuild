@@ -60,6 +60,33 @@ menu "PNAAT Hands-on"
             depends on PNAAT_COUNTER_SENSOR_ENABLED
     endmenu
 
+    menu "Indicador visual da inspeção"
+        config PNAAT_RESULT_LED_ENABLED
+            bool "Habilitar LEDs APROVADA/REJEITADA"
+            default n
+
+        config PNAAT_RESULT_LED_GOOD_GPIO
+            int "GPIO do LED APROVADA"
+            range 0 48
+            default 6
+            depends on PNAAT_RESULT_LED_ENABLED
+
+        config PNAAT_RESULT_LED_BAD_GPIO
+            int "GPIO do LED REJEITADA"
+            range 0 48
+            default 7
+            depends on PNAAT_RESULT_LED_ENABLED
+
+        config PNAAT_RESULT_LED_ACTIVE_LEVEL
+            int "Nível lógico que liga os LEDs"
+            range 0 1
+            default 1
+            depends on PNAAT_RESULT_LED_ENABLED
+            help
+                Use 1 para LED ligado do GPIO ao GND através de resistor.
+                Use 0 para ligação ativa em nível baixo.
+    endmenu
+
     menu "Controle da esteira"
         config PNAAT_MOTOR_ENABLED
             bool "Habilitar RUN/STOP"

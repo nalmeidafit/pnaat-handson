@@ -6,6 +6,7 @@ idf_component_register(
         "wifi_manager.c"
         "mqtt_manager.c"
         "ota_update.c"
+        "result_indicator.c"
     INCLUDE_DIRS "."
     REQUIRES
         nvs_flash

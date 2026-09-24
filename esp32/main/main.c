@@ -7,14 +7,36 @@
 #include "mqtt_manager.h"
 #include "nvs_flash.h"
 #include "ota_update.h"
+#include "result_indicator.h"
 #include "wifi_manager.h"
 
 static const char *TAG = "pnaat";
 
+static const char *result_name(pnaat_piece_result_t result)
+{
+    switch (result) {
+        case PNAAT_PIECE_RESULT_APPROVED:
+            return "APROVADA";
+
+        case PNAAT_PIECE_RESULT_REJECTED:
+            return "REJEITADA";
+
+        default:
+            return "DESCONHECIDA";
+    }
+}
+
 void app_main(void)
 {
-    ESP_LOGI(TAG, "PNAAT - contador físico + esteira + OTA de desenvolvimento");
-    ESP_LOGI(TAG, "ESP-IDF v5.5.2 / target ESP32-S3");
+    ESP_LOGI(
+        TAG,
+        "PNAAT - contador físico + visão MQTT + LEDs + OTA"
+    );
+
+    ESP_LOGI(
+        TAG,
+        "ESP-IDF v5.5.2 / target ESP32-S3"
+    );
 
     esp_err_t err = nvs_flash_init();
 
@@ -28,7 +50,9 @@ void app_main(void)
         ESP_ERROR_CHECK(err);
     }
 
-    QueueHandle_t queue = xQueueCreate(16, sizeof(app_event_t));
+    QueueHandle_t queue =
+        xQueueCreate(20, sizeof(app_event_t));
+
     if (queue == NULL) {
         ESP_LOGE(TAG, "Falha ao criar fila principal.");
         return;
@@ -36,19 +60,45 @@ void app_main(void)
 
     ESP_ERROR_CHECK(conveyor_init());
     ESP_ERROR_CHECK(counter_sensor_init(queue));
+    ESP_ERROR_CHECK(result_indicator_init());
     ESP_ERROR_CHECK(wifi_manager_init());
     ESP_ERROR_CHECK(mqtt_manager_init(queue));
 
     while (true) {
         app_event_t event;
 
-        if (xQueueReceive(queue, &event, portMAX_DELAY) != pdTRUE) {
+        if (
+            xQueueReceive(
+                queue,
+                &event,
+                portMAX_DELAY
+            ) != pdTRUE
+        ) {
             continue;
         }
 
         switch (event.type) {
             case APP_EVENT_SENSOR_COUNT:
                 mqtt_publish_sensor_count(event.count);
+                break;
+
+            case APP_EVENT_SENSOR_STATE:
+                mqtt_publish_sensor_presence(
+                    event.sensor_active
+                );
+                break;
+
+            case APP_EVENT_VISION_RESULT:
+                ESP_LOGI(
+                    TAG,
+                    "Visão: peça %lu -> %s",
+                    (unsigned long)event.vision_id,
+                    result_name(event.vision_result)
+                );
+
+                result_indicator_show(
+                    event.vision_result
+                );
                 break;
 
             case APP_EVENT_START:
@@ -70,26 +120,45 @@ void app_main(void)
                 break;
 
             case APP_EVENT_OTA_UPDATE: {
-                /* Desenvolvimento: nunca atualiza firmware com a esteira rodando. */
                 conveyor_stop();
                 mqtt_publish_conveyor_state(false);
 
-                esp_err_t ota_err = ota_update_start(event.ota_url);
+                esp_err_t ota_err =
+                    ota_update_start(event.ota_url);
+
                 if (ota_err != ESP_OK) {
                     ESP_LOGE(
                         TAG,
                         "Não foi possível iniciar OTA: %s",
                         esp_err_to_name(ota_err)
                     );
-                    mqtt_publish_ota_status("START_FAILED", ota_err);
+
+                    mqtt_publish_ota_status(
+                        "START_FAILED",
+                        ota_err
+                    );
                 }
+
                 break;
             }
 
             case APP_EVENT_MQTT_CONNECTED:
-                mqtt_publish_sensor_count(counter_sensor_get_count());
-                mqtt_publish_conveyor_state(conveyor_is_running());
-                mqtt_publish_ota_status("IDLE", ESP_OK);
+                mqtt_publish_sensor_count(
+                    counter_sensor_get_count()
+                );
+
+                mqtt_publish_sensor_presence(
+                    counter_sensor_is_active()
+                );
+
+                mqtt_publish_conveyor_state(
+                    conveyor_is_running()
+                );
+
+                mqtt_publish_ota_status(
+                    "IDLE",
+                    ESP_OK
+                );
                 break;
 
             default:
