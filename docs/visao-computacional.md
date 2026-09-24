@@ -15,77 +15,74 @@ Modos observados:
 - 1920 × 1080
 - 2592 × 1944
 
-Para os primeiros testes foi escolhido `1296 × 972`, preservando o enquadramento 4:3.
+Para a inspeção atual foi escolhido `1296 × 972`.
 
-## Instalação
+## Segmentação atual
 
-```bash
-sudo apt update
-sudo apt install -y \
-  python3-opencv \
-  python3-picamera2 \
-  python3-numpy \
-  python3-paho-mqtt \
-  v4l-utils
-```
-
-Ambiente Python:
-
-```bash
-python3 -m venv --system-site-packages .venv
-source .venv/bin/activate
-```
-
-## Teste da câmera
-
-```bash
-rpicam-hello --list-cameras
-```
-
-Captura:
-
-```bash
-python camera_test.py
-```
-
-## Evolução da inspeção
-
-### v0.1
-
-Primeiro contorno externo funcional sobre a engrenagem azul.
-
-### v0.2
-
-Foi tentada uma segmentação mais permissiva:
+A engrenagem azul usa como ponto de partida:
 
 ```text
-HSV lower = [70, 30, 20]
+HSV lower = [70, 45, 20]
 HSV upper = [115, 255, 255]
 ```
 
-O fundo branco/ciano passou a entrar na máscara. O maior contorno passou a ser o fundo, e não a engrenagem.
+A ROI reduz falsos contornos e limita a região útil da esteira.
 
-### v0.3
+## Inspeção em movimento
 
-Correções:
+O arquivo atual é:
 
-- saturação mínima voltou para 45;
-- ROI central configurável;
-- somente contornos externos para localizar a peça;
-- rejeição de contornos muito grandes;
-- rejeição de contornos que encostam na borda da ROI;
-- perfil radial mantido para futura detecção de dentes.
+```text
+vision/moving_gear_inspection.py
+```
 
-A v0.3 ainda é **diagnóstica** e não deve classificar OK/NOK até a estação óptica definitiva estar montada.
+Nesta fase ele é propositalmente diagnóstico:
+
+- identifica a engrenagem enquanto ela cruza a ROI;
+- agrupa vários frames como uma única peça;
+- conta uma vez por passagem;
+- calcula medianas das métricas;
+- publica `pnaat/contagem/camera`;
+- publica `pnaat/visao/medicao`;
+- não classifica APROVADA/REJEITADA ainda.
+
+O ESP32 e o sensor E18-D80NK continuam independentes da câmera.
+
+## Estado da máquina de rastreamento
+
+```text
+WAITING
+  -> 3 detecções consecutivas
+TRACKING
+  -> mede vários frames
+  -> 6 ausências consecutivas
+FINALIZA UMA PEÇA
+  -> incrementa contagem da câmera
+  -> publica métricas
+  -> volta a WAITING
+```
+
+O mínimo inicial é de 5 frames válidos por peça.
+
+## Exposição para movimento
+
+Valor inicial:
+
+```text
+ExposureTime = 5000 us
+FPS = 20
+```
+
+Se houver motion blur, testar `2500 us` e compensar com mais iluminação.
 
 ## Próxima calibração
 
-Após fixar suporte, altura, foco, iluminação e posição S2:
+Quando câmera, suporte, iluminação e velocidade da esteira estiverem fixos:
 
-1. capturar pelo menos 10 imagens da mesma peça boa;
-2. calcular variabilidade das métricas;
-3. definir tolerâncias;
-4. adicionar furo central;
-5. adicionar análise de dentes;
-6. criar peças defeituosas de referência;
-7. validar taxa de acerto antes da integração final MQTT.
+1. executar pelo menos 10 passagens da mesma peça boa;
+2. medir variabilidade de área, raio, circularidade e aspect ratio;
+3. adicionar perfil radial para avaliar dentes;
+4. criar/usar peças defeituosas de referência;
+5. definir tolerâncias;
+6. validar a taxa de acerto;
+7. só então habilitar o tópico `pnaat/visao/resultado` com APROVADA/REJEITADA.
