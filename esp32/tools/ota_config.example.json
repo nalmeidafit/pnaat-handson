@@ -1,0 +1,9 @@
+{
+  "broker": "192.168.0.249",
+  "mqtt_port": 1883,
+  "username": "pnaat",
+  "password": "TROQUE_ESTA_SENHA",
+  "topic_prefix": "pnaat",
+  "http_port": 8070,
+  "timeout_seconds": 180
+}

@@ -1,0 +1,21 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "counter_sensor.c"
+        "conveyor.c"
+        "wifi_manager.c"
+        "mqtt_manager.c"
+        "ota_update.c"
+    INCLUDE_DIRS "."
+    REQUIRES
+        nvs_flash
+        esp_wifi
+        esp_event
+        esp_netif
+        mqtt
+        json
+        driver
+        esp_timer
+        esp_https_ota
+        app_update
+)

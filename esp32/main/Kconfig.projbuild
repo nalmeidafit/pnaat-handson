@@ -1,0 +1,96 @@
+menu "PNAAT Hands-on"
+
+    menu "Rede Wi-Fi"
+        config PNAAT_WIFI_SSID
+            string "SSID Wi-Fi"
+            default "PNAAT"
+
+        config PNAAT_WIFI_PASSWORD
+            string "Senha Wi-Fi"
+            default "TROQUE_ESTA_SENHA"
+    endmenu
+
+    menu "MQTT"
+        config PNAAT_MQTT_URI
+            string "URI do broker MQTT"
+            default "mqtt://192.168.0.249:1883"
+
+        config PNAAT_MQTT_USERNAME
+            string "Usuário MQTT"
+            default "pnaat"
+
+        config PNAAT_MQTT_PASSWORD
+            string "Senha MQTT"
+            default "TROQUE_ESTA_SENHA"
+
+        config PNAAT_TOPIC_PREFIX
+            string "Prefixo MQTT"
+            default "pnaat"
+    endmenu
+
+    menu "Sensor final de contagem"
+        config PNAAT_COUNTER_SENSOR_ENABLED
+            bool "Habilitar sensor físico"
+            default n
+
+        config PNAAT_COUNTER_SENSOR_GPIO
+            int "GPIO do sensor"
+            range 0 48
+            default 4
+            depends on PNAAT_COUNTER_SENSOR_ENABLED
+
+        config PNAAT_COUNTER_SENSOR_ACTIVE_LEVEL
+            int "Nível ativo (0 ou 1)"
+            range 0 1
+            default 0
+            depends on PNAAT_COUNTER_SENSOR_ENABLED
+
+        config PNAAT_COUNTER_SENSOR_PULLUP
+            bool "Usar pull-up interno"
+            default n
+            depends on PNAAT_COUNTER_SENSOR_ENABLED
+            help
+                Para o E18-D80NK com condicionamento externo de nível,
+                normalmente deixe o pull-up interno desabilitado.
+
+        config PNAAT_COUNTER_SENSOR_DEBOUNCE_MS
+            int "Debounce (ms)"
+            range 5 1000
+            default 40
+            depends on PNAAT_COUNTER_SENSOR_ENABLED
+    endmenu
+
+    menu "Controle da esteira"
+        config PNAAT_MOTOR_ENABLED
+            bool "Habilitar RUN/STOP"
+            default n
+
+        config PNAAT_MOTOR_RUN_GPIO
+            int "GPIO RUN/STOP"
+            range 0 48
+            default 5
+            depends on PNAAT_MOTOR_ENABLED
+
+        config PNAAT_MOTOR_RUN_ACTIVE_LEVEL
+            int "Nível ativo de RUN"
+            range 0 1
+            default 1
+            depends on PNAAT_MOTOR_ENABLED
+    endmenu
+
+    menu "OTA de desenvolvimento"
+        config PNAAT_OTA_ENABLED
+            bool "Habilitar atualização OTA por comando MQTT"
+            default y
+            help
+                Recurso somente para facilitar o desenvolvimento na bancada.
+                O firmware recebe uma URL pelo MQTT e baixa o novo binário.
+
+        config PNAAT_OTA_TASK_STACK_SIZE
+            int "Stack da task OTA (bytes)"
+            range 6144 16384
+            default 8192
+            depends on PNAAT_OTA_ENABLED
+    endmenu
+
+endmenu

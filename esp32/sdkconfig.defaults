@@ -1,0 +1,15 @@
+# PNAAT Hands-on — ESP-IDF v5.5.2 / ESP32-S3
+# Heltec WiFi LoRa 32 V4: 16 MB Flash (fabricante).
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+
+# Tabela necessária para OTA.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_ota.csv"
+
+# DESENVOLVIMENTO: permite servidor HTTP local simples.
+# Não usar como modelo de OTA seguro para produção.
+CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y
+
+# OTA de desenvolvimento habilitado.
+CONFIG_PNAAT_OTA_ENABLED=y
