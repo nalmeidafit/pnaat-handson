@@ -60,6 +60,30 @@ menu "PNAAT Hands-on"
             depends on PNAAT_COUNTER_SENSOR_ENABLED
     endmenu
 
+    menu "Integração visão + sensor"
+        config PNAAT_MATCH_VISION_WITH_SENSOR
+            bool "Associar resultado da câmera à passagem no sensor final"
+            default y
+            help
+                Mantém filas FIFO independentes para resultados da câmera e
+                detecções do sensor final. A classificação é aplicada ao LED
+                apenas quando câmera e sensor forem associados em ordem.
+
+        config PNAAT_MATCH_QUEUE_DEPTH
+            int "Profundidade das filas de associação"
+            range 2 64
+            default 16
+
+        config PNAAT_MATCH_TIMEOUT_MS
+            int "Tempo máximo para associação (ms)"
+            range 1000 120000
+            default 30000
+            help
+                Resultados ou detecções sem par são descartados após este
+                intervalo para evitar que uma mensagem antiga seja associada
+                a uma peça nova.
+    endmenu
+
     menu "Indicador visual da inspeção"
         config PNAAT_RESULT_LED_ENABLED
             bool "Habilitar LEDs APROVADA/REJEITADA"

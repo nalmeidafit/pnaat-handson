@@ -2,6 +2,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "app_events.h"
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -12,3 +14,10 @@ void mqtt_publish_sensor_count(uint32_t count);
 void mqtt_publish_sensor_presence(bool present);
 void mqtt_publish_conveyor_state(bool running);
 void mqtt_publish_ota_status(const char *status, esp_err_t error_code);
+
+void mqtt_publish_piece_match(
+    uint32_t sensor_count,
+    uint32_t camera_id,
+    pnaat_piece_result_t result,
+    float confidence
+);

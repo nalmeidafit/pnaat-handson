@@ -24,9 +24,13 @@ typedef enum {
 
 typedef struct {
     app_event_type_t type;
+
     uint32_t count;
     bool sensor_active;
+
     uint32_t vision_id;
     pnaat_piece_result_t vision_result;
+    float vision_confidence;
+
     char ota_url[PNAAT_OTA_URL_MAX_LEN];
 } app_event_t;

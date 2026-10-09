@@ -3,9 +3,11 @@ idf_component_register(
         "main.c"
         "counter_sensor.c"
         "conveyor.c"
+        "hardware_config.c"
         "wifi_manager.c"
         "mqtt_manager.c"
         "ota_update.c"
+        "piece_matcher.c"
         "result_indicator.c"
     INCLUDE_DIRS "."
     REQUIRES
