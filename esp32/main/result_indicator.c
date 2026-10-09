@@ -38,7 +38,10 @@ esp_err_t result_indicator_init(void)
         CONFIG_PNAAT_RESULT_LED_GOOD_GPIO ==
         CONFIG_PNAAT_RESULT_LED_BAD_GPIO
     ) {
-        ESP_LOGE(TAG, "GPIO dos LEDs APROVADA e REJEITADA não podem ser iguais.");
+        ESP_LOGE(
+            TAG,
+            "GPIO dos LEDs APROVADA e REJEITADA não podem ser iguais."
+        );
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -62,13 +65,18 @@ esp_err_t result_indicator_init(void)
         CONFIG_PNAAT_RESULT_LED_BAD_GPIO
     );
 #else
-    ESP_LOGW(TAG, "Indicador APROVADA/REJEITADA desabilitado no menuconfig.");
+    ESP_LOGW(
+        TAG,
+        "Indicador APROVADA/REJEITADA desabilitado no menuconfig."
+    );
 #endif
 
     return ESP_OK;
 }
 
-esp_err_t result_indicator_show(pnaat_piece_result_t result)
+esp_err_t result_indicator_show(
+    pnaat_piece_result_t result
+)
 {
 #if CONFIG_PNAAT_RESULT_LED_ENABLED
     switch (result) {
@@ -82,9 +90,20 @@ esp_err_t result_indicator_show(pnaat_piece_result_t result)
             ESP_LOGI(TAG, "LED REJEITADA ligado.");
             break;
 
+        case PNAAT_PIECE_RESULT_INCONCLUSIVE:
+            set_leds(false, false);
+            ESP_LOGW(
+                TAG,
+                "Resultado inconclusivo; LEDs desligados."
+            );
+            break;
+
         default:
             set_leds(false, false);
-            ESP_LOGW(TAG, "Resultado desconhecido; LEDs desligados.");
+            ESP_LOGW(
+                TAG,
+                "Resultado desconhecido; LEDs desligados."
+            );
             break;
     }
 #else
@@ -99,5 +118,6 @@ esp_err_t result_indicator_clear(void)
 #if CONFIG_PNAAT_RESULT_LED_ENABLED
     set_leds(false, false);
 #endif
+
     return ESP_OK;
 }

@@ -77,7 +77,7 @@ Exemplos aceitos:
 {"id_camera":19,"resultado":"REJEITADA","confianca":0.88}
 ```
 
-Também são aceitos `OK` e `NOK`. Resultados não finais, como `PENDENTE_CALIBRACAO`, são ignorados pelo ESP32.
+Também são aceitos `OK` e `NOK`. Estados como `PENDENTE_CALIBRACAO`, `NAO_CALIBRADO` ou `INCONCLUSIVA` são preservados como `INCONCLUSIVA`; nesse caso a associação com a peça é mantida, os dois LEDs ficam apagados e o resultado final continua sendo publicado sem deslocar a sequência FIFO.
 
 ## Associação câmera ↔ sensor final
 
@@ -149,7 +149,7 @@ Configure:
 
 Os GPIOs 6 e 7 são apenas valores iniciais de configuração. Devem ser confirmados na pinagem física da placa antes da montagem.
 
-Quando a associação visão/sensor está habilitada, os LEDs só mudam após a peça física ser associada ao resultado da visão.
+Quando a associação visão/sensor está habilitada, os LEDs só mudam após a peça física ser associada ao resultado da visão. Se uma nova peça chegar ao sensor e o resultado ainda não estiver disponível, os dois LEDs são apagados temporariamente para não exibir a classificação da peça anterior.
 
 ## Verificação de GPIOs
 

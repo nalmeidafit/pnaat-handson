@@ -26,6 +26,9 @@ static const char *result_name(
         case PNAAT_PIECE_RESULT_REJECTED:
             return "REJEITADA";
 
+        case PNAAT_PIECE_RESULT_INCONCLUSIVE:
+            return "INCONCLUSIVA";
+
         default:
             return "DESCONHECIDA";
     }
@@ -166,6 +169,14 @@ void app_main(void)
                     apply_piece_match(
                         &match
                     );
+                } else {
+                    /*
+                     * Uma nova peça chegou ao sensor final, mas o
+                     * resultado ainda não está disponível. Apagamos
+                     * os LEDs para não manter a indicação da peça
+                     * anterior enquanto aguardamos a associação.
+                     */
+                    result_indicator_clear();
                 }
 #endif
                 break;

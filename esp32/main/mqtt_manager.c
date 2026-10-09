@@ -108,6 +108,18 @@ static pnaat_piece_result_t parse_result_text(
         return PNAAT_PIECE_RESULT_REJECTED;
     }
 
+    if (
+        !strcasecmp(text, "INCONCLUSIVA") ||
+        !strcasecmp(text, "INCONCLUSIVO") ||
+        !strcasecmp(text, "INDETERMINADA") ||
+        !strcasecmp(text, "INDETERMINADO") ||
+        !strcasecmp(text, "PENDENTE_CALIBRACAO") ||
+        !strcasecmp(text, "NAO_CALIBRADO") ||
+        !strcasecmp(text, "NAO_CALIBRADA")
+    ) {
+        return PNAAT_PIECE_RESULT_INCONCLUSIVE;
+    }
+
     return PNAAT_PIECE_RESULT_UNKNOWN;
 }
 
@@ -121,6 +133,9 @@ static const char *result_to_text(
 
         case PNAAT_PIECE_RESULT_REJECTED:
             return "REJEITADA";
+
+        case PNAAT_PIECE_RESULT_INCONCLUSIVE:
+            return "INCONCLUSIVA";
 
         default:
             return "DESCONHECIDA";
@@ -256,7 +271,7 @@ static void handle_vision_result(const char *payload)
     ) {
         ESP_LOGW(
             TAG,
-            "Resultado da visão ainda não é final: %s",
+            "Resultado da visão não reconhecido: %s",
             result->valuestring
         );
         cJSON_Delete(root);
