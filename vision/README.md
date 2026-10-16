@@ -1,113 +1,116 @@
-# Módulo de visão
+# Visão de máquina
 
-Diretório destinado à inspeção de engrenagens pela Raspberry Pi 5.
+A visão de máquina do workshop possui dois fluxos distintos:
 
-## Arquivos
+1. **aquisição supervisionada de imagens**, usada para criar conjuntos `OK` e `NOK`;
+2. **classificação operacional com YOLO**, usada durante a passagem das engrenagens na esteira e integrada ao MQTT.
 
-- `camera_test.py`: captura uma imagem 1296 × 972 com Picamera2.
-- `gear_inspection_v0_3.py`: análise diagnóstica de imagem parada.
-- `moving_gear_inspection.py`: rastreamento de uma engrenagem em movimento.
+Também permanecem no repositório os scripts anteriores de inspeção geométrica, úteis como diagnóstico e histórico de desenvolvimento.
 
-## Ambiente
-
-```bash
-cd ~/pnaat-handson/vision
-
-python3 -m venv --system-site-packages .venv
-source .venv/bin/activate
-```
-
-Pacotes usados:
-
-```bash
-sudo apt install -y \
-  python3-opencv \
-  python3-picamera2 \
-  python3-numpy \
-  python3-paho-mqtt
-```
-
-## Teste 1 — movimento sem MQTT
-
-Primeiro valide somente câmera, ROI e rastreamento:
-
-```bash
-python moving_gear_inspection.py --no-mqtt
-```
-
-Se houver interface gráfica disponível:
-
-```bash
-python moving_gear_inspection.py --no-mqtt --show
-```
-
-A janela mostra a ROI e o contorno detectado. Pressione `Q` para sair.
-
-## Exposição
-
-O valor inicial é:
+## Estrutura
 
 ```text
-5000 us
+vision/
+├── README.md
+├── aquisicao_imagens/
+│   ├── README.md
+│   ├── camera_test.py
+│   ├── gear_image_aq.py
+│   └── requirements.txt
+├── classificador_engrenagens/
+│   ├── README.md
+│   ├── .env.example
+│   ├── gear_image_class_noScreen.py
+│   ├── requirements.txt
+│   └── best.pt
+├── camera_test.py
+├── gear_inspection_v0_3.py
+└── moving_gear_inspection.py
 ```
 
-Se a engrenagem estiver borrada em movimento, experimente:
-
-```bash
-python moving_gear_inspection.py \
-  --no-mqtt \
-  --exposure-us 2500
-```
-
-Se a imagem ficar escura, aumente a iluminação antes de aumentar muito a exposição.
-
-Para voltar à autoexposição:
-
-```bash
-python moving_gear_inspection.py \
-  --no-mqtt \
-  --exposure-us 0
-```
-
-## Como uma peça é contada
-
-O script não conta frames. Ele mantém uma pequena máquina de estados:
+## Fluxo operacional atual
 
 ```text
-WAITING
-   |
-   | 3 frames consecutivos detectando a peça
-   v
-TRACKING
-   |
-   | coleta vários frames da mesma engrenagem
-   |
-   | 6 frames consecutivos sem a peça
-   v
-FINALIZA UMA PEÇA
+OV5647
+  ↓
+Picamera2
+  ↓
+ROI / trigger
+  ↓
+modelo YOLO best.pt
+  ↓
+OK / NOK
+  ↓
+APROVADA / REJEITADA
+  ↓
+Mosquitto
+  ↓
+pnaat/visao/resultado
+  ├── ESP32-S3 → associação com sensor final → LEDs
+  └── Node-RED → InfluxDB → Grafana
 ```
 
-A passagem só é aceita quando houver pelo menos 5 amostras válidas.
+## Classificador usado na bancada
 
-Ao final, o terminal mostra as medianas de:
-
-- área externa;
-- raio externo;
-- circularidade;
-- aspect ratio;
-- posição central.
-
-Nesta fase o resultado permanece:
+A versão principal para execução via SSH é:
 
 ```text
-PENDENTE_CALIBRACAO
+vision/classificador_engrenagens/gear_image_class_noScreen.py
 ```
 
-Nenhuma peça é classificada como aprovada ou rejeitada ainda.
+Ela foi baseada no classificador fornecido para o workshop e atualizada para:
 
-## MQTT
+- não depender de interface gráfica;
+- não armazenar credenciais MQTT no código;
+- aguardar confirmação real da conexão MQTT;
+- utilizar QoS 1;
+- detectar falha de publicação;
+- persistir a contagem da câmera;
+- publicar contagem em `pnaat/contagem/camera`;
+- publicar classificação em `pnaat/visao/resultado`;
+- enviar `id_camera`, `resultado`, `confianca`, classe do modelo e origem.
 
-O script lê:
+Consulte:
+
+```text
+vision/classificador_engrenagens/README.md
+```
+
+## Payload de resultado
+
+Exemplo:
+
+```json
+{
+  "id_camera": 17,
+  "resultado": "APROVADA",
+  "confianca": 0.9342,
+  "classe_modelo": "OK",
+  "source": "camera_yolo",
+  "timestamp_utc": "2026-10-16T16:00:00.000+00:00"
+}
+```
+
+O firmware ESP32-S3 utiliza diretamente:
+
+```text
+id_camera
+resultado
+confianca
+```
+
+Mapeamento atual:
+
+```text
+OK  → APROVADA
+NOK → REJEITADA
+```
+
+Qualquer classe não reconhecida é enviada como `INCONCLUSIVA`.
+
+## Configuração MQTT
+
+A visão lê estas variáveis de ambiente:
 
 ```text
 PNAAT_MQTT_HOST
@@ -115,66 +118,42 @@ PNAAT_MQTT_PORT
 PNAAT_MQTT_USERNAME
 PNAAT_MQTT_PASSWORD
 PNAAT_TOPIC_PREFIX
+PNAAT_MODEL_PATH
 ```
 
-Exemplo, sem colocar senha no repositório:
+A senha real não deve ser gravada no Git.
 
-```bash
-export PNAAT_MQTT_HOST=127.0.0.1
-export PNAAT_MQTT_PORT=1883
-export PNAAT_MQTT_USERNAME=pnaat
-export PNAAT_MQTT_PASSWORD='SUA_SENHA'
-export PNAAT_TOPIC_PREFIX=pnaat
+## Modelo YOLO
 
-python moving_gear_inspection.py
-```
-
-A contagem da câmera é publicada com retain em:
+O classificador depende do arquivo:
 
 ```text
-pnaat/contagem/camera
+vision/classificador_engrenagens/best.pt
 ```
 
-Exemplo:
+O código e a documentação já estão preparados para esse caminho. O arquivo binário do modelo deve ser adicionado ao repositório ou copiado para essa pasta na preparação da bancada.
 
-```json
-{"count":18,"source":"camera"}
-```
+## Aquisição de imagens
 
-As métricas de cada passagem são publicadas em:
+Para criar novas imagens supervisionadas:
 
 ```text
-pnaat/visao/medicao
+vision/aquisicao_imagens/gear_image_aq.py
 ```
 
-Exemplo:
+Consulte:
 
-```json
-{
-  "id_camera":18,
-  "source":"camera",
-  "samples":12,
-  "metrics":{
-    "area_px2":112000.0,
-    "radius_px":208.0,
-    "circularity":0.72,
-    "aspect_ratio":0.98,
-    "center_x_px":669,
-    "center_y_px":607
-  },
-  "classificacao":"PENDENTE_CALIBRACAO"
-}
+```text
+vision/aquisicao_imagens/README.md
 ```
 
-O contador é persistido localmente em `vision_state.json`, que está ignorado pelo Git.
+## Scripts geométricos anteriores
 
-## Próxima etapa
+Os arquivos:
 
-Depois que o rastreamento estiver estável:
+```text
+gear_inspection_v0_3.py
+moving_gear_inspection.py
+```
 
-1. passar a mesma engrenagem boa pelo menos 10 vezes;
-2. registrar a dispersão das métricas;
-3. definir a referência da peça boa;
-4. adicionar análise do perfil radial/dentes;
-5. validar peças defeituosas;
-6. somente então publicar `APROVADA` ou `REJEITADA` em `pnaat/visao/resultado`.
+permanecem como ferramentas de diagnóstico e registro das etapas anteriores de desenvolvimento. Eles não são o classificador YOLO principal da bancada.
