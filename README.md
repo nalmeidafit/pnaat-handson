@@ -2,87 +2,215 @@
 
 Projeto de apoio ao workshop de habilitação de Lideranças Técnicas Regionais e monitores do Laboratório PNAAT.
 
-## Desafio
+## Objetivo do protótipo
 
 Construir uma célula didática de manufatura inteligente para inspeção de engrenagens produzidas por impressão 3D antes de uma etapa de sinterização.
 
-Fluxo previsto:
+A solução combina:
+
+- esteira e sensor físico final;
+- ESP32-S3;
+- Raspberry Pi 5 + câmera OV5647;
+- classificação por visão de máquina/YOLO;
+- MQTT;
+- Node-RED;
+- InfluxDB;
+- Grafana.
+
+## Arquitetura atual
 
 ```text
-Esteira + sensores S1/S2/S3
-        ↓
-      ESP32
-        ↓ MQTT
-    Mosquitto
-        ↓
-     Node-RED
-        ↓
- ┌───────────────┐
- │ Raspberry Pi 5│
- │ câmera + OpenCV
- └───────────────┘
-        ↓
-     Node-RED
-        ↓
-    InfluxDB
-        ↓
-      Grafana
+                 RASPBERRY PI 5
+        ┌────────────────────────────┐
+        │ OV5647 → Picamera2 → YOLO │
+        │             │              │
+        │             └─ MQTT ───────┼─────────────┐
+        │                            │             │
+        │ Mosquitto ←───────────────┘             │
+        │    │                                     │
+        │    ├────────→ Node-RED → InfluxDB → Grafana
+        │    │
+        └────┼─────────────────────────────────────┘
+             │ MQTT
+             │
+             ▼
+          ESP32-S3
+        ┌───────────────┐
+        │ sensor final  │
+        │ associação    │
+        │ câmera/sensor │
+        │ LED APROVADA  │
+        │ LED REJEITADA │
+        └───────────────┘
 ```
 
-## Estado atual
+Tópicos principais:
 
-- Raspberry Pi 5 configurada e acessada remotamente pelo VS Code.
-- Stack MING em Docker Compose funcionando:
-  - Mosquitto 2.1.2
-  - InfluxDB 2.9.1
-  - Node-RED 5.0.7
-  - Grafana 12.4.11
-- MQTT validado.
-- Node-RED gravando no InfluxDB pela API HTTP v2.
-- Grafana exibindo:
-  - total de peças;
-  - aprovadas;
-  - rejeitadas;
-  - confiança média;
-  - peças inspecionadas ao longo do tempo;
-  - última peça inspecionada.
-- Câmera OV5647 reconhecida pela Raspberry Pi 5.
-- Captura com Picamera2/OpenCV validada em 1296 × 972.
-- Inspeção geométrica em desenvolvimento:
-  - v0.1: primeiro contorno funcional;
-  - v0.2: regressão de segmentação identificada;
-  - v0.3: correção de segmentação, ROI e validações básicas.
+```text
+pnaat/contagem/camera
+pnaat/visao/resultado
+pnaat/contagem/sensor
+pnaat/sensor/presenca
+pnaat/peca/resultado_final
+pnaat/esteira/comando
+```
 
-## Estrutura
+## Estrutura do repositório
 
 ```text
 pnaat-handson/
 ├── README.md
-├── .gitignore
 ├── docker/
-├── node-red/
-├── grafana/
-├── vision/
+│   ├── compose.yaml
+│   ├── .env.example
+│   └── mosquitto/
 ├── docs/
-└── assets/
+│   ├── instalacao-ming.md
+│   ├── node-red-influxdb.md
+│   ├── grafana.md
+│   └── visao-computacional.md
+├── esp32/
+│   ├── README.md
+│   ├── main/
+│   └── tools/
+├── vision/
+│   ├── README.md
+│   ├── aquisicao_imagens/
+│   ├── classificador_engrenagens/
+│   └── scripts de diagnóstico anteriores
+└── montagens-mecanicas/
+    └── modelos-3d/
 ```
 
-## Documentação
+## Ordem recomendada de preparação
 
-- [Instalação do MING](docs/instalacao-ming.md)
+### 1. Raspberry Pi / MING
+
+Comece em:
+
+[docs/instalacao-ming.md](docs/instalacao-ming.md)
+
+Esse guia parte de uma Raspberry Pi 5 nova e inclui:
+
+- atualização do Raspberry Pi OS;
+- Git e ferramentas básicas;
+- instalação do Docker Engine;
+- Docker Compose;
+- clone do repositório;
+- criação do `.env`;
+- criação do `mosquitto.conf`;
+- geração do `password.txt`;
+- correção de permissões;
+- inicialização dos quatro serviços;
+- testes de Mosquitto, InfluxDB, Node-RED e Grafana.
+
+### 2. ESP32-S3
+
+Consulte:
+
+[esp32/README.md](esp32/README.md)
+
+O firmware usa ESP-IDF v5.5.2 e possui:
+
+- Wi-Fi;
+- MQTT;
+- sensor final de contagem;
+- associação FIFO câmera ↔ sensor;
+- LEDs APROVADA/REJEITADA;
+- controle opcional de esteira;
+- OTA de desenvolvimento.
+
+### 3. Visão de máquina
+
+Consulte:
+
+[vision/README.md](vision/README.md)
+
+O classificador operacional está em:
+
+```text
+vision/classificador_engrenagens/
+```
+
+Ele publica:
+
+```text
+pnaat/contagem/camera
+pnaat/visao/resultado
+```
+
+Exemplo de resultado:
+
+```json
+{
+  "id_camera": 17,
+  "resultado": "APROVADA",
+  "confianca": 0.9342,
+  "classe_modelo": "OK",
+  "source": "camera_yolo"
+}
+```
+
+O arquivo binário `best.pt` ainda precisa ser colocado em:
+
+```text
+vision/classificador_engrenagens/best.pt
+```
+
+### 4. Dados e dashboard
+
 - [Node-RED → InfluxDB](docs/node-red-influxdb.md)
-- [Dashboard Grafana](docs/grafana.md)
-- [Visão computacional](docs/visao-computacional.md)
-- [Módulo de visão](vision/README.md)
+- [Grafana](docs/grafana.md)
 
-## Segurança e arquitetura
+### 5. Montagens mecânicas
 
-O ESP32 deve executar as ações físicas imediatas da esteira, incluindo a parada associada aos sensores. MQTT, Node-RED e visão computacional realizam integração, supervisão e decisão de processo, mas não devem ser a única camada de segurança da máquina.
+Os arquivos STL/STEP consolidados devem ficar em:
 
-## Credenciais
+```text
+montagens-mecanicas/modelos-3d/
+```
 
-Arquivos reais de credenciais não devem ser versionados. Use `.env.example` como referência e mantenha `.env` apenas no host.
+## Estado atual
 
-## Status
+Já disponível:
 
-Projeto em desenvolvimento para preparação e validação do hands-on PNAAT.
+- stack MING em Docker Compose;
+- Mosquitto 2.1.2;
+- InfluxDB 2.9.1;
+- Node-RED 5.0.7;
+- Grafana 12.4.11;
+- firmware ESP32-S3 compilável em ESP-IDF v5.5.2;
+- recepção de `pnaat/visao/resultado` pelo ESP32;
+- associação câmera ↔ sensor físico;
+- módulo de LEDs;
+- aquisição supervisionada de imagens;
+- classificador YOLO adaptado para MQTT;
+- documentação de instalação completa do MING.
+
+Pendências principais:
+
+- adicionar o modelo `best.pt`;
+- confirmar os GPIOs físicos definitivos dos LEDs;
+- testar visão → MQTT → ESP32 → LEDs;
+- validar o fluxo final no Node-RED/InfluxDB/Grafana;
+- adicionar os arquivos STL/STEP definitivos;
+- atualizar a apostila com os procedimentos finais.
+
+O acompanhamento da entrega está na issue **#1**.
+
+## Segurança e credenciais
+
+- arquivos reais de credenciais não devem ser versionados;
+- `.env`, `password.txt` e senhas MQTT devem permanecer locais;
+- o ESP32 deve continuar responsável pelas ações físicas imediatas da bancada;
+- MQTT e supervisão não devem ser usados como única camada de segurança de máquina.
+
+## Persistência
+
+Na operação normal do MING, não use:
+
+```bash
+docker compose down -v
+```
+
+O parâmetro `-v` remove volumes persistentes.
