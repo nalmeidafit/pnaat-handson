@@ -1,0 +1,3 @@
+ultralytics==8.4.168
+opencv-python
+paho-mqtt
