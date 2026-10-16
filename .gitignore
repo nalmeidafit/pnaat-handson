@@ -17,6 +17,13 @@ vision/*.jpeg
 vision/*.png
 vision/*.csv
 vision/*.json
+vision/**/vision_state.json
+vision/**/OK/
+vision/**/NOK/
+vision/**/teste_opencv.jpg
+
+# O modelo YOLO best.pt deve ser versionado quando consolidado.
+# Não adicionar regra *.pt aqui.
 
 # Exceção: imagens e arquivos selecionados para documentação
 !assets/images/*.jpg
