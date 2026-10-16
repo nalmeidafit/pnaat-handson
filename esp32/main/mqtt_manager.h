@@ -9,6 +9,8 @@
 #include "freertos/queue.h"
 
 esp_err_t mqtt_manager_init(QueueHandle_t queue);
+esp_err_t mqtt_manager_start(void);
+esp_err_t mqtt_manager_stop(void);
 
 void mqtt_publish_sensor_count(uint32_t count);
 void mqtt_publish_sensor_presence(bool present);

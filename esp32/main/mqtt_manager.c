@@ -14,6 +14,7 @@ static const char *TAG = "mqtt";
 static esp_mqtt_client_handle_t s_client;
 static QueueHandle_t s_queue;
 static bool s_connected;
+static bool s_started;
 
 static void make_topic(char *out, size_t n, const char *suffix)
 {
@@ -498,9 +499,84 @@ esp_err_t mqtt_manager_init(
         )
     );
 
-    return esp_mqtt_client_start(
-        s_client
+    s_started = false;
+    s_connected = false;
+
+    ESP_LOGI(
+        TAG,
+        "Cliente MQTT preparado; aguardando Wi-Fi com IP."
     );
+
+    return ESP_OK;
+}
+
+esp_err_t mqtt_manager_start(void)
+{
+    if (s_client == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (s_started) {
+        return ESP_OK;
+    }
+
+    ESP_LOGI(
+        TAG,
+        "Wi-Fi com IP disponível; iniciando MQTT."
+    );
+
+    esp_err_t err =
+        esp_mqtt_client_start(
+            s_client
+        );
+
+    if (err == ESP_OK) {
+        s_started = true;
+    } else {
+        ESP_LOGE(
+            TAG,
+            "Falha ao iniciar MQTT: %s",
+            esp_err_to_name(err)
+        );
+    }
+
+    return err;
+}
+
+esp_err_t mqtt_manager_stop(void)
+{
+    if (s_client == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (!s_started) {
+        s_connected = false;
+        return ESP_OK;
+    }
+
+    s_connected = false;
+
+    ESP_LOGI(
+        TAG,
+        "Wi-Fi indisponível; pausando MQTT."
+    );
+
+    esp_err_t err =
+        esp_mqtt_client_stop(
+            s_client
+        );
+
+    if (err == ESP_OK) {
+        s_started = false;
+    } else {
+        ESP_LOGW(
+            TAG,
+            "Falha ao pausar MQTT: %s",
+            esp_err_to_name(err)
+        );
+    }
+
+    return err;
 }
 
 void mqtt_publish_sensor_count(

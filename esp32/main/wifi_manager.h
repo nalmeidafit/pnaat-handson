@@ -1,3 +1,7 @@
 #pragma once
+
 #include "esp_err.h"
-esp_err_t wifi_manager_init(void);
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+
+esp_err_t wifi_manager_init(QueueHandle_t queue);

@@ -21,6 +21,32 @@ O firmware foi organizado para permitir habilitar ou desabilitar individualmente
 - controle RUN/STOP opcional da esteira;
 - OTA de desenvolvimento via MQTT + HTTP local.
 
+## Sequência Wi-Fi → MQTT
+
+O cliente MQTT é criado durante a inicialização, mas **não tenta abrir conexão antes de o ESP32 receber um endereço IP**.
+
+A sequência de boot é:
+
+```text
+Wi-Fi STA inicia
+      ↓
+autenticação/associação
+      ↓
+DHCP
+      ↓
+IP_EVENT_STA_GOT_IP
+      ↓
+APP_EVENT_WIFI_GOT_IP
+      ↓
+mqtt_manager_start()
+      ↓
+conexão MQTT
+      ↓
+subscriptions
+```
+
+Se o Wi-Fi cair, o firmware pausa o cliente MQTT e mantém a tentativa de reconexão Wi-Fi. Quando um novo endereço IP é obtido, o MQTT é iniciado novamente. Isso evita mensagens de `Host is unreachable` causadas por tentativas MQTT durante os primeiros instantes do boot, antes de existir rota IP.
+
 ## Tópicos MQTT
 
 ### Publicados pelo ESP32

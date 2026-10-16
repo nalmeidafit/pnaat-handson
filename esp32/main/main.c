@@ -130,12 +130,17 @@ void app_main(void)
         result_indicator_init()
     );
 
+    /*
+     * O cliente MQTT é preparado antes do Wi-Fi, mas só é iniciado
+     * após IP_EVENT_STA_GOT_IP. Isso evita tentativas de conexão
+     * enquanto a interface ainda não possui rota/IP.
+     */
     ESP_ERROR_CHECK(
-        wifi_manager_init()
+        mqtt_manager_init(queue)
     );
 
     ESP_ERROR_CHECK(
-        mqtt_manager_init(queue)
+        wifi_manager_init(queue)
     );
 
     while (true) {
@@ -303,6 +308,43 @@ void app_main(void)
                     mqtt_publish_ota_status(
                         "START_FAILED",
                         ota_err
+                    );
+                }
+
+                break;
+            }
+
+            case APP_EVENT_WIFI_GOT_IP: {
+                esp_err_t mqtt_err =
+                    mqtt_manager_start();
+
+                if (mqtt_err != ESP_OK) {
+                    ESP_LOGE(
+                        TAG,
+                        "Falha ao iniciar MQTT após obter IP: %s",
+                        esp_err_to_name(
+                            mqtt_err
+                        )
+                    );
+                }
+
+                break;
+            }
+
+            case APP_EVENT_WIFI_DISCONNECTED: {
+                esp_err_t mqtt_err =
+                    mqtt_manager_stop();
+
+                if (
+                    mqtt_err != ESP_OK &&
+                    mqtt_err != ESP_ERR_INVALID_STATE
+                ) {
+                    ESP_LOGW(
+                        TAG,
+                        "Falha ao pausar MQTT após perda do Wi-Fi: %s",
+                        esp_err_to_name(
+                            mqtt_err
+                        )
                     );
                 }
 
