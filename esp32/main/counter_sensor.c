@@ -95,6 +95,19 @@ static void task_counter(void *arg)
         const int64_t now = esp_timer_get_time();
 
         if (raw != s_raw) {
+            const int level =
+                gpio_get_level(
+                    CONFIG_PNAAT_COUNTER_SENSOR_GPIO
+                );
+
+            ESP_LOGI(
+                TAG,
+                "Transição elétrica GPIO%d: nível=%d -> %s",
+                CONFIG_PNAAT_COUNTER_SENSOR_GPIO,
+                level,
+                raw ? "ATIVO" : "INATIVO"
+            );
+
             s_raw = raw;
             s_changed_us = now;
         }
@@ -165,9 +178,33 @@ esp_err_t counter_sensor_init(QueueHandle_t queue)
 
     ESP_ERROR_CHECK(gpio_config(&cfg));
 
+    const int initial_level =
+        gpio_get_level(
+            CONFIG_PNAAT_COUNTER_SENSOR_GPIO
+        );
+
     s_raw = is_active();
     s_stable = s_raw;
     s_changed_us = esp_timer_get_time();
+
+    ESP_LOGI(
+        TAG,
+        "Sensor habilitado: GPIO%d, nível ativo=%d, pull-up=%s, debounce=%d ms",
+        CONFIG_PNAAT_COUNTER_SENSOR_GPIO,
+        CONFIG_PNAAT_COUNTER_SENSOR_ACTIVE_LEVEL,
+        CONFIG_PNAAT_COUNTER_SENSOR_PULLUP
+            ? "SIM"
+            : "NAO",
+        CONFIG_PNAAT_COUNTER_SENSOR_DEBOUNCE_MS
+    );
+
+    ESP_LOGI(
+        TAG,
+        "Estado elétrico inicial GPIO%d: nível=%d -> %s",
+        CONFIG_PNAAT_COUNTER_SENSOR_GPIO,
+        initial_level,
+        s_raw ? "ATIVO" : "INATIVO"
+    );
 
     return xTaskCreate(
         task_counter,
