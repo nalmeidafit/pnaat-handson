@@ -151,10 +151,16 @@ Exemplo de resultado:
 }
 ```
 
-O arquivo binário `best.pt` ainda precisa ser colocado em:
+O classificador usa o modelo oficial `best.pt`, validado para Ultralytics 8.4.168 e classes `NOK`/ `OK`. Em cada clone da bancada, confirme que o arquivo está em:
 
 ```text
 vision/classificador_engrenagens/best.pt
+```
+
+SHA-256 esperado:
+
+```text
+fd7c021806c16d44fb26c76eaeb2a4ba469627a9bce12da198bc98acf7ea2ed2
 ```
 
 ### 4. Dados e dashboard
@@ -189,7 +195,7 @@ Já disponível:
 
 Pendências principais:
 
-- adicionar o modelo `best.pt`;
+- garantir que o modelo `best.pt` validado esteja presente no clone usado em cada bancada;
 - confirmar os GPIOs físicos definitivos dos LEDs;
 - testar visão → MQTT → ESP32 → LEDs;
 - validar o fluxo final no Node-RED/InfluxDB/Grafana;
