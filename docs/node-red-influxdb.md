@@ -545,7 +545,175 @@ No Node-RED:
 3. o HTTP Request deve retornar `204`;
 4. o dado deve aparecer no bucket `fabrica_futuro`.
 
-## 10. Salvar o fluxo
+## 10. Gravar também a contagem física do sensor
+
+O dashboard atual possui um painel chamado:
+
+```text
+Contagem — Sensor físico
+```
+
+Ele consulta a measurement:
+
+```text
+contagem_esteira
+```
+
+com:
+
+```text
+_field = count
+origem = sensor_final
+```
+
+Portanto, além do fluxo de `pnaat/peca/resultado_final`, o Node-RED precisa gravar a contagem publicada pelo ESP32 em:
+
+```text
+pnaat/contagem/sensor
+```
+
+Exemplo de mensagem:
+
+```json
+{"count":82,"source":"sensor_final"}
+```
+
+### 10.1 Adicionar outro MQTT IN
+
+Crie um segundo node **mqtt in** usando o mesmo broker `Mosquitto PNAAT`.
+
+Configure:
+
+```text
+Topic: pnaat/contagem/sensor
+QoS:   1
+```
+
+### 10.2 Criar a Function da contagem física
+
+Crie uma Function chamada:
+
+```text
+Contagem física → Line Protocol
+```
+
+Use:
+
+```javascript
+const influxUrl = env.get("INFLUXDB_URL");
+const org = env.get("INFLUXDB_ORG");
+const bucket = env.get("INFLUXDB_BUCKET");
+const token = env.get("INFLUXDB_TOKEN");
+
+let data = msg.payload;
+
+if (Buffer.isBuffer(data)) {
+    data = data.toString("utf8");
+}
+
+if (typeof data === "string") {
+    try {
+        data = JSON.parse(data);
+    } catch (err) {
+        node.error(
+            "Payload da contagem não é JSON válido",
+            msg
+        );
+        return null;
+    }
+}
+
+if (
+    data == null ||
+    typeof data.count !== "number"
+) {
+    node.error(
+        "Payload sem campo count numérico",
+        msg
+    );
+    return null;
+}
+
+const count = Math.trunc(data.count);
+
+msg.method = "POST";
+
+msg.url =
+    `${influxUrl}/api/v2/write` +
+    `?org=${encodeURIComponent(org)}` +
+    `&bucket=${encodeURIComponent(bucket)}` +
+    `&precision=ms`;
+
+msg.headers = {
+    "Authorization": `Token ${token}`,
+    "Content-Type": "text/plain; charset=utf-8"
+};
+
+msg.payload =
+    `contagem_esteira,origem=sensor_final ` +
+    `count=${count}i`;
+
+return msg;
+```
+
+### 10.3 Ligar o fluxo
+
+Use outro node **HTTP Request** com:
+
+```text
+Method: use msg.method / set by msg.method
+URL:    vazio
+Return: a UTF-8 string
+```
+
+Conecte:
+
+```text
+MQTT IN pnaat/contagem/sensor
+        ↓
+Function Contagem física → Line Protocol
+        ↓
+HTTP Request
+        ↓
+Debug
+```
+
+Clique em **Deploy**.
+
+### 10.4 Testar sem depender do ESP32
+
+Na Raspberry Pi:
+
+```bash
+docker exec -it pnaat-mosquitto \
+  mosquitto_pub \
+  -h localhost \
+  -p 1883 \
+  -u pnaat \
+  -P SUA_SENHA_MQTT \
+  -t 'pnaat/contagem/sensor' \
+  -m '{"count":123,"source":"sensor_final"}'
+```
+
+O Debug deve mostrar:
+
+```text
+statusCode: 204
+```
+
+No InfluxDB Data Explorer, confirme:
+
+```text
+Measurement: contagem_esteira
+Field:       count
+Tag:         origem=sensor_final
+Value:       123
+```
+
+Essa gravação é necessária para o painel de contagem física do Grafana funcionar.
+
+## 11. Salvar o fluxo
+
 
 Depois que tudo funcionar:
 
@@ -556,7 +724,7 @@ Depois que tudo funcionar:
 
 O volume `nodered_data` mantém o fluxo entre reinicializações, mas um JSON exportado facilita restaurar a bancada ou replicá-la em outra Raspberry Pi.
 
-## 11. Diagnóstico rápido
+## 12. Diagnóstico rápido
 
 ### MQTT não conecta
 
@@ -596,7 +764,7 @@ http://influxdb:8086
 
 Verifique o Debug imediatamente antes do HTTP Request e confirme que `msg.payload` virou Line Protocol.
 
-## 12. Checklist de validação
+## 13. Checklist de validação
 
 - [ ] Node-RED abre na porta 1880;
 - [ ] variáveis do InfluxDB estão disponíveis no container;
@@ -609,6 +777,9 @@ Verifique o Debug imediatamente antes do HTTP Request e confirme que `msg.payloa
 - [ ] publicação manual é gravada no InfluxDB;
 - [ ] resultado real do ESP32 chega ao Node-RED;
 - [ ] resultado real é gravado no bucket `fabrica_futuro`;
+- [ ] `pnaat/contagem/sensor` é recebido pelo segundo fluxo;
+- [ ] measurement `contagem_esteira` aparece no InfluxDB;
+- [ ] field `count` com tag `origem=sensor_final` foi validado;
 - [ ] fluxo foi salvo com Deploy;
 - [ ] cópia JSON do fluxo foi exportada.
 
