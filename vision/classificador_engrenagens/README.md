@@ -257,6 +257,48 @@ Ao detectar uma peça, o programa:
 6. publica a contagem;
 7. publica o resultado da classificação.
 
+## 12. Rearme entre peças
+
+Depois de classificar uma peça, o programa entra em estado de espera até confirmar que a região de detecção ficou livre.
+
+A lógica atual usa histerese e confirmação por vários frames:
+
+```text
+TRIGGER_PIXELS = 10
+REARM_PIXELS   = 3
+REARM_FRAMES   = 5
+```
+
+Funcionamento:
+
+```text
+pixels pretos > 10
+        ↓
+peça detectada e classificada
+        ↓
+aguarda saída da peça
+        ↓
+pixels pretos <= 3 por 5 frames consecutivos
+        ↓
+sistema rearmado
+        ↓
+próxima peça pode ser detectada
+```
+
+Depois de cada classificação deve aparecer:
+
+```text
+[CAM] aguardando saída da peça para rearme
+```
+
+E, após a região ficar livre:
+
+```text
+[CAM] sistema rearmado
+```
+
+A confirmação por 5 frames evita rearme falso por ruído ou variação momentânea da imagem. O limite de rearme não exige mais zero pixels pretos, porque pequenas sombras ou ruídos da câmera podem impedir que a contagem chegue exatamente a zero.
+
 ## 12. Tópicos publicados
 
 Contagem:
@@ -300,7 +342,7 @@ outra classe -> INCONCLUSIVA
 
 O ESP32 utiliza `id_camera`, `resultado` e `confianca` para associar a classificação à passagem da peça pelo sensor final.
 
-## 13. Resultado esperado no monitor MQTT
+## 14. Resultado esperado no monitor MQTT
 
 Ao passar uma engrenagem:
 
@@ -315,7 +357,7 @@ Depois, quando a mesma peça chegar ao sensor final do ESP32:
 pnaat/peca/resultado_final ...
 ```
 
-## 14. Encerramento
+## 15. Encerramento
 
 Use:
 
@@ -325,7 +367,7 @@ Ctrl+C
 
 O script encerra a câmera e a conexão MQTT de forma controlada.
 
-## 15. Checklist
+## 16. Checklist
 
 - [ ] OV5647 reconhecida por `rpicam-hello --list-cameras`;
 - [ ] `best.pt` presente na pasta;
@@ -341,6 +383,8 @@ O script encerra a câmera e a conexão MQTT de forma controlada.
 - [ ] conexão MQTT confirmada;
 - [ ] `pnaat/contagem/camera` publicado;
 - [ ] `pnaat/visao/resultado` publicado;
+- [ ] após retirar a peça aparece `[CAM] sistema rearmado`;
+- [ ] pelo menos duas peças consecutivas são detectadas e classificadas;
 - [ ] ESP32 recebe o resultado;
 - [ ] associação visão/sensor é concluída;
 - [ ] LEDs APROVADA/REJEITADA respondem conforme a classificação.
