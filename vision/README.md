@@ -131,7 +131,7 @@ O classificador depende do arquivo:
 vision/classificador_engrenagens/best.pt
 ```
 
-O código e a documentação já estão preparados para esse caminho. O arquivo binário do modelo deve ser adicionado ao repositório ou copiado para essa pasta na preparação da bancada.
+O código e a documentação já estão preparados para esse caminho. O modelo oficial da bancada foi validado como um `Ultralytics ClassificationModel` baseado em `yolov8n-cls`, treinado com Ultralytics 8.4.168 e classes `NOK`/ `OK`. O arquivo deve estar em `vision/classificador_engrenagens/best.pt`. O SHA-256 esperado é `fd7c021806c16d44fb26c76eaeb2a4ba469627a9bce12da198bc98acf7ea2ed2`.
 
 ## Aquisição de imagens
 
