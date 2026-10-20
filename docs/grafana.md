@@ -1,28 +1,24 @@
-# Grafana — Dashboard da Fábrica do Futuro
+# Grafana — criação completa do dashboard da Fábrica do Futuro
 
-Este guia parte do MING já instalado e da integração Node-RED → InfluxDB validada. O objetivo é configurar o Grafana desde o primeiro acesso até um dashboard funcional, sem assumir etapas intermediárias.
+Este guia parte do MING já instalado e da integração Node-RED → InfluxDB validada. Ele descreve **todos os passos necessários para criar manualmente o dashboard usado no workshop**, partindo de um Grafana sem datasource e sem dashboard.
 
-O fluxo esperado antes de iniciar é:
+O dashboard de referência foi criado no Grafana **12.4.11** e utiliza o datasource InfluxDB com linguagem Flux.
 
-```text
-MQTT → Node-RED → InfluxDB
-                    ↓
-                  Grafana
-```
+## 1. O que deve existir antes de começar
 
-O bucket utilizado é:
+A cadeia abaixo precisa estar funcionando:
 
 ```text
-fabrica_futuro
+ESP32 / Visão
+     ↓ MQTT
+Mosquitto
+     ↓
+Node-RED
+     ↓
+InfluxDB
+     ↓
+Grafana
 ```
-
-e a measurement esperada é:
-
-```text
-pecas_producao
-```
-
-## 1. Pré-requisitos
 
 Na Raspberry Pi:
 
@@ -31,10 +27,12 @@ cd ~/pnaat-handson/docker
 docker compose ps
 ```
 
-Confirme que estão em execução:
+Confirme que estes containers estão em execução:
 
 ```text
+pnaat-mosquitto
 pnaat-influxdb
+pnaat-nodered
 pnaat-grafana
 ```
 
@@ -44,27 +42,83 @@ Teste o InfluxDB:
 curl -fsS http://localhost:8086/health
 ```
 
+A resposta deve indicar:
+
+```text
+"status":"pass"
+```
+
 Teste o Grafana:
 
 ```bash
 curl -fsS http://localhost:3000/api/health
 ```
 
-Descubra o IP:
+Descubra o IP da Raspberry Pi:
 
 ```bash
 hostname -I
 ```
 
-Abra no navegador:
+Anote o IPv4 da rede local.
+
+## 2. Confirmar que o InfluxDB já possui os dados usados pelo dashboard
+
+Antes de configurar o Grafana, abra:
+
+```text
+http://IP_DA_RASPBERRY:8086
+```
+
+Entre no InfluxDB com as credenciais da bancada.
+
+No **Data Explorer**, confirme a existência destas duas measurements:
+
+```text
+pecas_producao
+contagem_esteira
+```
+
+Em `pecas_producao`, devem existir:
+
+```text
+Fields:
+  id
+  id_camera
+  aprovada
+  confianca
+
+Tag:
+  linha=esteira1
+```
+
+Em `contagem_esteira`, devem existir:
+
+```text
+Field:
+  count
+
+Tag:
+  origem=sensor_final
+```
+
+Se `contagem_esteira` não existir, execute primeiro a seção de contagem física do tutorial:
+
+```text
+docs/node-red-influxdb.md
+```
+
+O Grafana não cria estes dados; ele apenas consulta o que já foi gravado no InfluxDB.
+
+## 3. Abrir o Grafana
+
+No navegador:
 
 ```text
 http://IP_DA_RASPBERRY:3000
 ```
 
-## 2. Entrar no Grafana
-
-Use as credenciais definidas no arquivo:
+Use as credenciais definidas em:
 
 ```text
 ~/pnaat-handson/docker/.env
@@ -77,114 +131,103 @@ GRAFANA_USER
 GRAFANA_PASSWORD
 ```
 
-Para conferir somente o nome do usuário:
+Para conferir somente o usuário:
 
 ```bash
 cd ~/pnaat-handson/docker
 grep '^GRAFANA_USER=' .env
 ```
 
-Não copie a senha para documentação, Git ou prints públicos.
+Não registre a senha real no Git, na apostila ou em screenshots públicos.
 
-## 3. Confirmar que existem dados antes de criar o dashboard
+## 4. Obter os parâmetros do InfluxDB
 
-Antes de configurar o Grafana, abra:
-
-```text
-http://IP_DA_RASPBERRY:8086
-```
-
-Entre no InfluxDB e use **Data Explorer**.
-
-Confirme:
-
-```text
-Bucket:       fabrica_futuro
-Measurement:  pecas_producao
-Fields:
-  id
-  id_camera
-  aprovada
-  confianca
-```
-
-Se ainda não houver dados, volte ao tutorial [node-red-influxdb.md](node-red-influxdb.md) e execute as publicações manuais de teste.
-
-O Grafana não mostrará valores se o InfluxDB estiver vazio.
-
-## 4. Obter Organization, Bucket e Token
-
-A configuração esperada está no `.env` da stack.
-
-Na Raspberry Pi:
+Ainda na Raspberry Pi:
 
 ```bash
 cd ~/pnaat-handson/docker
+
 grep '^INFLUXDB_ORG=' .env
 grep '^INFLUXDB_BUCKET=' .env
-```
-
-Resultado esperado:
-
-```text
-INFLUXDB_ORG=PNAAT
-INFLUXDB_BUCKET=fabrica_futuro
-```
-
-Para usar o token no Grafana, consulte-o localmente:
-
-```bash
 grep '^INFLUXDB_TOKEN=' .env
 ```
 
-Copie o valor apenas para a configuração do datasource.
+A configuração esperada é:
 
-## 5. Criar o datasource InfluxDB
+```text
+Organization: PNAAT
+Bucket:       fabrica_futuro
+Token:        valor de INFLUXDB_TOKEN
+```
+
+Copie o token apenas para a configuração do datasource.
+
+## 5. Criar o datasource InfluxDB no Grafana
 
 Na interface do Grafana:
 
 1. abra **Connections**;
-2. entre em **Data sources** ou **Add new connection**, conforme a interface exibida;
-3. escolha **InfluxDB**;
-4. crie um novo datasource.
+2. entre em **Data sources**;
+3. clique em **Add new data source** ou **Add data source**;
+4. escolha **InfluxDB**.
 
 Configure:
 
 ```text
-Name:          InfluxDB PNAAT
-Query language: Flux
-URL:           http://influxdb:8086
+Name:            InfluxDB PNAAT
+Query language:  Flux
+URL:             http://influxdb:8086
 ```
 
-> Use `influxdb`, não `localhost`. Grafana e InfluxDB estão em containers diferentes na mesma rede Docker.
+### Por que usar influxdb e não localhost
 
-Na seção de autenticação/InfluxDB Details, configure:
+Grafana e InfluxDB estão em containers diferentes.
+
+Dentro do container Grafana:
 
 ```text
-Organization:  PNAAT
-Token:         valor de INFLUXDB_TOKEN
-Default Bucket: fabrica_futuro
+localhost
 ```
 
-Não habilite Basic Auth para esta configuração.
+significa o próprio Grafana.
 
-Clique em **Save & test**.
+Por isso a URL correta é:
 
-O resultado deve indicar que o datasource está funcionando.
+```text
+http://influxdb:8086
+```
 
-### Se aparecer 401 Unauthorized
+Na seção de detalhes do InfluxDB configure:
 
-O token está incorreto ou não corresponde ao token criado na primeira inicialização do InfluxDB.
+```text
+Organization:    PNAAT
+Token:           valor de INFLUXDB_TOKEN
+Default Bucket:  fabrica_futuro
+```
 
-### Se aparecer Bad Gateway / connection refused
+Para esta configuração, deixe Basic Auth desabilitado.
 
-Verifique:
+Clique em:
+
+```text
+Save & test
+```
+
+O Grafana deve informar que o datasource está funcionando.
+
+### Se ocorrer 401 Unauthorized
+
+O token configurado não corresponde ao token válido do InfluxDB.
+
+### Se ocorrer connection refused ou Bad Gateway
+
+Confira:
 
 ```text
 URL = http://influxdb:8086
 ```
 
-e:
+e depois:
 
 ```bash
 cd ~/pnaat-handson/docker
@@ -193,36 +236,44 @@ docker compose logs --tail=100 influxdb
 docker compose logs --tail=100 grafana
 ```
 
-## 6. Fazer uma consulta de teste no Grafana
+## 6. Validar o datasource usando Explore
 
-Antes de construir painéis, abra **Explore**.
+Não comece a criar os painéis antes deste teste.
 
-Selecione:
+No Grafana:
 
-```text
-InfluxDB PNAAT
-```
-
-Use a consulta:
+1. abra **Explore**;
+2. selecione o datasource `InfluxDB PNAAT`;
+3. use o editor Flux;
+4. execute:
 
 ```flux
 from(bucket: "fabrica_futuro")
-  |> range(start: -1h)
+  |> range(start: -6h)
   |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
 ```
 
-Execute.
+Devem aparecer registros.
+
+Depois teste a contagem física:
+
+```flux
+from(bucket: "fabrica_futuro")
+  |> range(start: -6h)
+  |> filter(fn: (r) => r["_measurement"] == "contagem_esteira")
+```
 
 Se não aparecer nada:
 
-1. aumente o intervalo para `-24h`;
-2. confirme no InfluxDB Data Explorer que existem dados;
+1. aumente temporariamente para `-24h`;
+2. confirme os dados no Data Explorer do InfluxDB;
 3. confira o bucket;
-4. confira o datasource.
+4. confira o datasource;
+5. confira se o Node-RED está gravando os dois tipos de dados.
 
-Só prossiga quando esta consulta retornar registros.
+Só prossiga quando as consultas funcionarem no Explore.
 
-## 7. Criar o dashboard
+## 7. Criar um dashboard novo
 
 Na interface do Grafana:
 
@@ -232,13 +283,120 @@ Na interface do Grafana:
 4. clique em **Add visualization**;
 5. escolha o datasource `InfluxDB PNAAT`.
 
-Crie os painéis abaixo.
+O dashboard de referência possui **7 painéis**.
 
-> Durante os testes, use no canto superior direito um intervalo como **Last 15 minutes**, **Last 1 hour** ou **Last 24 hours** que inclua os dados recém-gravados. Um intervalo incorreto é uma causa comum de painel vazio.
+Ao final teremos:
 
-## 8. Painel — Total de peças
+```text
+┌───────────────────────────────────────────────────────────────┐
+│ Peças       │ Peças       │ Total de    │                     │
+│ Aprovadas   │ Rejeitadas  │ Peças       │                     │
+├─────────────┴──────────────┴─────────────┤ Peças inspecionadas │
+│ Confiança Média │ Última Peça            │ ao longo do tempo   │
+│                 │ Inspecionada           │                     │
+├─────────────────┴────────────────────────┴─────────────────────┤
+│ Contagem — Sensor físico                                      │
+└───────────────────────────────────────────────────────────────┘
+```
 
-Visualização:
+## 8. Ajustar o intervalo de tempo do dashboard
+
+O dashboard de referência usa:
+
+```text
+From: now-6h
+To:   now
+Timezone: Browser
+```
+
+No seletor de tempo do Grafana escolha:
+
+```text
+Last 6 hours
+```
+
+Isso é importante porque várias queries usam:
+
+```flux
+v.timeRangeStart
+v.timeRangeStop
+```
+
+Se o intervalo selecionado não contiver dados, o painel ficará vazio mesmo estando configurado corretamente.
+
+## 9. Painel 1 — Peças Aprovadas
+
+Crie uma nova visualização.
+
+### 9.1 Datasource
+
+Selecione:
+
+```text
+InfluxDB PNAAT
+```
+
+### 9.2 Tipo de visualização
+
+Escolha:
+
+```text
+Stat
+```
+
+### 9.3 Título
+
+Use:
+
+```text
+Peças Aprovadas
+```
+
+### 9.4 Query Flux
+
+No editor da query, use:
+
+```flux
+from(bucket: v.defaultBucket)
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
+  |> filter(fn: (r) => r["_field"] == "aprovada")
+  |> filter(fn: (r) => r["_value"] == true)
+  |> count()
+```
+
+### 9.5 Value options
+
+Configure a redução como:
+
+```text
+Calculation: Last not null
+```
+
+### 9.6 Aparência
+
+Configure:
+
+```text
+Color mode:  Value
+Graph mode:  Area
+Text mode:   Auto
+Orientation: Auto
+```
+
+Em **Thresholds**, mantenha apenas o valor base em verde:
+
+```text
+Base / 0 → Green
+```
+
+Clique em **Apply**.
+
+## 10. Painel 2 — Peças Rejeitadas
+
+Adicione nova visualização.
+
+Tipo:
 
 ```text
 Stat
@@ -247,10 +405,59 @@ Stat
 Título:
 
 ```text
-Total de peças
+Peças Rejeitadas
 ```
 
-Consulta:
+Query:
+
+```flux
+from(bucket: v.defaultBucket)
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
+  |> filter(fn: (r) => r["_field"] == "aprovada")
+  |> filter(fn: (r) => r["_value"] == false)
+  |> count()
+```
+
+Value options:
+
+```text
+Calculation: Last not null
+```
+
+Aparência:
+
+```text
+Color mode: Value
+Graph mode: Area
+Text mode:  Auto
+```
+
+Threshold base:
+
+```text
+Base / 0 → Dark red
+```
+
+Clique em **Apply**.
+
+## 11. Painel 3 — Total de Peças
+
+Adicione nova visualização.
+
+Tipo:
+
+```text
+Stat
+```
+
+Título:
+
+```text
+Total de Peças
+```
+
+Query:
 
 ```flux
 from(bucket: v.defaultBucket)
@@ -260,75 +467,45 @@ from(bucket: v.defaultBucket)
   |> count()
 ```
 
-Em **Value options / Calculation**, use o último valor retornado se necessário.
-
-Salve o painel com **Apply**.
-
-## 9. Painel — Peças aprovadas
-
-Adicione nova visualização **Stat**.
-
-Título:
+Value options:
 
 ```text
-Peças aprovadas
+Calculation: Last not null
 ```
 
-Consulta:
+Aparência:
 
-```flux
-from(bucket: v.defaultBucket)
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
-  |> filter(fn: (r) => r["_field"] == "aprovada")
-  |> filter(fn: (r) => r["_value"] == true)
-  |> count()
+```text
+Color mode: Value
+Graph mode: Area
+Text mode:  Auto
+```
+
+Threshold base:
+
+```text
+Base / 0 → Green
 ```
 
 Clique em **Apply**.
 
-## 10. Painel — Peças rejeitadas
+## 12. Painel 4 — CONFIANÇA MÉDIA
 
-Visualização:
+Adicione nova visualização.
+
+Tipo:
 
 ```text
-Stat
+Gauge
 ```
 
 Título:
 
 ```text
-Peças rejeitadas
+CONFIANÇA MÉDIA
 ```
 
-Consulta:
-
-```flux
-from(bucket: v.defaultBucket)
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
-  |> filter(fn: (r) => r["_field"] == "aprovada")
-  |> filter(fn: (r) => r["_value"] == false)
-  |> count()
-```
-
-Clique em **Apply**.
-
-## 11. Painel — Confiança média
-
-Visualização:
-
-```text
-Stat
-```
-
-Título:
-
-```text
-Confiança média
-```
-
-Consulta:
+Query:
 
 ```flux
 from(bucket: v.defaultBucket)
@@ -338,69 +515,59 @@ from(bucket: v.defaultBucket)
   |> mean()
 ```
 
-Em **Standard options → Unit**, escolha:
+Em **Value options**:
 
 ```text
-Percent (0.0-1.0)
+Calculation: Last not null
 ```
 
-Por exemplo, `0.93` será exibido como aproximadamente `93%`.
+Em **Standard options**:
+
+```text
+Unit: Percent (0.0-1.0)
+Min:  0
+Max:  1
+```
+
+Exemplo:
+
+```text
+0.93 → 93%
+```
+
+### 12.1 Threshold recomendado
+
+O JSON de referência possuía um threshold `80`, porém o valor de confiança está na escala `0.0 ... 1.0`.
+
+Para representar corretamente 80%, configure:
+
+```text
+0.00 → Red
+0.80 → Green
+```
+
+Assim:
+
+```text
+confiança < 80%  → vermelho
+confiança ≥ 80%  → verde
+```
+
+Em Gauge options:
+
+```text
+Show threshold markers: habilitado
+Show threshold labels:  opcional/desabilitado
+Orientation:             Auto
+```
 
 Clique em **Apply**.
 
-## 12. Painel — Peças ao longo do tempo
+## 13. Painel 5 — Última Peça Inspecionada
 
-Crie uma visualização:
+Adicione nova visualização.
 
-```text
-Time series
-```
-
-Título:
-
-```text
-Peças ao longo do tempo
-```
-
-Use duas queries.
-
-### Query A — Aprovadas
-
-```flux
-from(bucket: v.defaultBucket)
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
-  |> filter(fn: (r) => r["_field"] == "aprovada")
-  |> filter(fn: (r) => r["_value"] == true)
-  |> aggregateWindow(
-      every: v.windowPeriod,
-      fn: count,
-      createEmpty: false
-  )
-  |> yield(name: "Aprovadas")
-```
-
-### Query B — Rejeitadas
-
-```flux
-from(bucket: v.defaultBucket)
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
-  |> filter(fn: (r) => r["_field"] == "aprovada")
-  |> filter(fn: (r) => r["_value"] == false)
-  |> aggregateWindow(
-      every: v.windowPeriod,
-      fn: count,
-      createEmpty: false
-  )
-  |> yield(name: "Rejeitadas")
-```
-
-Confirme que as duas séries aparecem e clique em **Apply**.
-
-## 13. Painel — Última peça inspecionada
-
-Crie uma visualização:
+Tipo:
 
 ```text
 Stat
@@ -409,10 +576,10 @@ Stat
 Título:
 
 ```text
-Última peça inspecionada
+Última Peça Inspecionada
 ```
 
-Consulta:
+Query:
 
 ```flux
 from(bucket: v.defaultBucket)
@@ -426,39 +593,255 @@ from(bucket: v.defaultBucket)
   }))
 ```
 
-Depois configure **Value mappings**:
+Observe que este painel usa:
 
 ```text
-1 → APROVADA
-0 → REJEITADA
+range(start: -30d)
 ```
 
-Opcionalmente associe uma cor a cada mapping.
+e não o intervalo global de 6 horas. Isso permite mostrar a última peça mesmo que ela tenha sido inspecionada antes do intervalo atual do dashboard.
 
-Use **Calculation = Last** se a visualização solicitar uma redução.
+### 13.1 Value options
+
+Configure:
+
+```text
+Calculation: Last not null
+```
+
+### 13.2 Value mappings
+
+Em **Value mappings**, crie dois mapeamentos do tipo **Value**.
+
+Primeiro:
+
+```text
+Value: 1
+Text:  APROVADA
+Color: Dark green
+```
+
+Segundo:
+
+```text
+Value: 0
+Text:  REJEITADA
+Color: Dark red
+```
+
+### 13.3 Aparência
+
+Configure:
+
+```text
+Color mode: Background solid
+Text mode:  Value
+Graph mode: Area
+```
+
+O resultado esperado é um painel com fundo verde para `APROVADA` e fundo vermelho para `REJEITADA`.
 
 Clique em **Apply**.
 
-## 14. Organizar e salvar o dashboard
+## 14. Painel 6 — Peças Inspecionadas ao Longo do Tempo
 
-Depois de criar os painéis:
+Adicione nova visualização.
 
-1. redimensione e organize os cards;
-2. clique no ícone **Save dashboard**;
-3. dê o nome:
+Tipo:
+
+```text
+Time series
+```
+
+Título:
+
+```text
+Peças Inspecionadas ao Longo do Tempo
+```
+
+Este painel usa duas queries.
+
+### 14.1 Query A — Aprovadas
+
+```flux
+from(bucket: v.defaultBucket)
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
+  |> filter(fn: (r) => r["_field"] == "aprovada")
+  |> filter(fn: (r) => r["_value"] == true)
+  |> aggregateWindow(
+      every: 10s,
+      fn: count,
+      createEmpty: false
+  )
+  |> yield(name: "Aprovadas")
+```
+
+RefId:
+
+```text
+A
+```
+
+### 14.2 Query B — Rejeitadas
+
+Clique em **Add query**.
+
+Use:
+
+```flux
+from(bucket: v.defaultBucket)
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
+  |> filter(fn: (r) => r["_field"] == "aprovada")
+  |> filter(fn: (r) => r["_value"] == false)
+  |> aggregateWindow(
+      every: 10s,
+      fn: count,
+      createEmpty: false
+  )
+  |> yield(name: "Rejeitadas")
+```
+
+RefId:
+
+```text
+B
+```
+
+### 14.3 Aparência
+
+Configure:
+
+```text
+Draw style:          Lines
+Line interpolation: Linear
+Line width:          1
+Fill opacity:        0
+Show points:         Auto
+Point size:          5
+Stacking:            Off / None
+Color scheme:        Classic palette
+```
+
+### 14.4 Legend
+
+Configure:
+
+```text
+Show legend:   habilitado
+Mode:          List
+Placement:     Bottom
+```
+
+### 14.5 Tooltip
+
+Configure:
+
+```text
+Mode: Single
+```
+
+Clique em **Apply**.
+
+## 15. Painel 7 — Contagem — Sensor físico
+
+Este painel depende do segundo fluxo documentado em `docs/node-red-influxdb.md`, que grava `pnaat/contagem/sensor` na measurement `contagem_esteira`.
+
+Adicione nova visualização.
+
+Tipo:
+
+```text
+Stat
+```
+
+Título:
+
+```text
+Contagem — Sensor físico
+```
+
+Query:
+
+```flux
+from(bucket: v.defaultBucket)
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "contagem_esteira")
+  |> filter(fn: (r) => r["_field"] == "count")
+  |> filter(fn: (r) => r["origem"] == "sensor_final")
+  |> last()
+```
+
+Value options:
+
+```text
+Calculation: Last
+```
+
+Standard options:
+
+```text
+Unit:     none
+Decimals: 0
+```
+
+Aparência:
+
+```text
+Color mode: Value
+Graph mode: Area
+Text mode:  Auto
+```
+
+Threshold base:
+
+```text
+Base / 0 → Green
+```
+
+Clique em **Apply**.
+
+## 16. Organizar os painéis como no dashboard de referência
+
+O Grafana usa uma grade de 24 colunas.
+
+A disposição do dashboard de referência é:
+
+| Painel | X | Y | Largura | Altura |
+|---|---:|---:|---:|---:|
+| Peças Aprovadas | 0 | 0 | 5 | 5 |
+| Peças Rejeitadas | 5 | 0 | 5 | 5 |
+| Total de Peças | 10 | 0 | 5 | 5 |
+| Peças Inspecionadas ao Longo do Tempo | 15 | 0 | 9 | 10 |
+| CONFIANÇA MÉDIA | 0 | 5 | 5 | 5 |
+| Última Peça Inspecionada | 5 | 5 | 10 | 5 |
+| Contagem — Sensor físico | 0 | 10 | 5 | 5 |
+
+Na interface gráfica, basta arrastar e redimensionar os painéis até reproduzir essa disposição.
+
+Não é necessário informar manualmente X/Y; esses valores são gerados pelo Grafana.
+
+## 17. Salvar o dashboard
+
+Depois de montar todos os painéis:
+
+1. clique em **Save dashboard**;
+2. informe o nome:
 
 ```text
 Fábrica do Futuro — PNAAT
 ```
 
-4. escolha/crie uma pasta do Grafana se desejar;
-5. confirme em **Save**.
+3. selecione/crie uma pasta do Grafana, se desejar;
+4. clique em **Save**.
 
-Não confunda **Apply**, que salva alterações no painel dentro do editor, com **Save dashboard**, que persiste o dashboard completo.
+> **Apply** salva a edição de um painel no dashboard atual.  
+> **Save dashboard** persiste o dashboard completo.
 
-## 15. Teste final com dados novos
+## 18. Teste completo — peça aprovada
 
-Com o dashboard aberto, publique uma peça de teste no Mosquitto:
+Com o dashboard aberto, publique manualmente uma peça aprovada:
 
 ```bash
 cd ~/pnaat-handson/docker
@@ -473,17 +856,41 @@ docker exec -it pnaat-mosquitto \
   -m '{"sensor_count":2001,"id_camera":2001,"resultado":"APROVADA","confianca":0.97,"source":"teste_grafana"}'
 ```
 
-O Node-RED deve gravar o dado no InfluxDB.
+Também publique a contagem física correspondente:
 
-No Grafana:
+```bash
+docker exec -it pnaat-mosquitto \
+  mosquitto_pub \
+  -h localhost \
+  -p 1883 \
+  -u pnaat \
+  -P SUA_SENHA_MQTT \
+  -t 'pnaat/contagem/sensor' \
+  -m '{"count":2001,"source":"sensor_final"}'
+```
 
-1. escolha um intervalo que inclua o momento atual;
-2. clique em **Refresh**;
-3. confira se `Total de peças` aumentou;
-4. confira se `Peças aprovadas` aumentou;
-5. confira se `Última peça inspecionada` mostra `APROVADA`.
+No Node-RED, os HTTP Request devem retornar:
 
-Repita com:
+```text
+204
+```
+
+No Grafana, clique em **Refresh**.
+
+Confirme:
+
+```text
+Total de Peças             → aumenta
+Peças Aprovadas            → aumenta
+Confiança Média            → inclui 97%
+Última Peça Inspecionada   → APROVADA
+Contagem — Sensor físico   → 2001
+Time series                → registra uma aprovada
+```
+
+## 19. Teste completo — peça rejeitada
+
+Publique:
 
 ```bash
 docker exec -it pnaat-mosquitto \
@@ -496,15 +903,45 @@ docker exec -it pnaat-mosquitto \
   -m '{"sensor_count":2002,"id_camera":2002,"resultado":"REJEITADA","confianca":0.89,"source":"teste_grafana"}'
 ```
 
-Depois de atualizar o dashboard, a última peça deve indicar `REJEITADA`.
+E:
 
-## 16. Problemas comuns
+```bash
+docker exec -it pnaat-mosquitto \
+  mosquitto_pub \
+  -h localhost \
+  -p 1883 \
+  -u pnaat \
+  -P SUA_SENHA_MQTT \
+  -t 'pnaat/contagem/sensor' \
+  -m '{"count":2002,"source":"sensor_final"}'
+```
 
-### Datasource funciona, mas painel está vazio
+Depois de atualizar o dashboard:
 
-Verifique primeiro o intervalo de tempo do dashboard.
+```text
+Peças Rejeitadas           → aumenta
+Última Peça Inspecionada   → REJEITADA
+Contagem — Sensor físico   → 2002
+Time series                → registra uma rejeitada
+```
 
-Depois use **Explore** para executar:
+## 20. Diagnóstico de painel vazio
+
+Se um painel não mostrar dados, siga esta ordem:
+
+### 20.1 Confirmar o intervalo de tempo
+
+Verifique se o dashboard está em:
+
+```text
+Last 6 hours
+```
+
+ou em outro intervalo que inclua os dados.
+
+### 20.2 Testar no Explore
+
+Para peças:
 
 ```flux
 from(bucket: "fabrica_futuro")
@@ -512,77 +949,88 @@ from(bucket: "fabrica_futuro")
   |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
 ```
 
-### Grafana não conecta ao InfluxDB
+Para sensor:
 
-Não use:
-
-```text
-http://localhost:8086
+```flux
+from(bucket: "fabrica_futuro")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r["_measurement"] == "contagem_esteira")
 ```
 
-Use:
+### 20.3 Testar no InfluxDB
+
+Se o Explore não retornar registros, abra o Data Explorer do InfluxDB.
+
+Se os dados não existirem também no InfluxDB, o problema está antes do Grafana.
+
+### 20.4 Verificar o datasource
+
+Confirme:
 
 ```text
-http://influxdb:8086
+Query language: Flux
+URL: http://influxdb:8086
+Organization: PNAAT
+Default Bucket: fabrica_futuro
 ```
 
-### 401 Unauthorized
+### 20.5 Verificar erros dos containers
 
-Confira o `INFLUXDB_TOKEN` do `.env`.
-
-### Painel de confiança mostra 0.93 em vez de 93%
-
-Configure:
-
-```text
-Standard options → Unit → Percent (0.0-1.0)
+```bash
+cd ~/pnaat-handson/docker
+docker compose logs --tail=100 influxdb
+docker compose logs --tail=100 grafana
 ```
 
-### Última peça mostra 0 ou 1
+## 21. Persistência
 
-Configure os Value mappings:
-
-```text
-1 → APROVADA
-0 → REJEITADA
-```
-
-## 17. Persistência
-
-O Grafana utiliza o volume Docker:
+O Grafana utiliza o volume:
 
 ```text
 grafana_data
 ```
 
-Por isso, não use durante operação normal:
+Não use na operação normal:
 
 ```bash
 docker compose down -v
 ```
 
-Esse comando remove volumes persistentes.
+Esse comando remove os volumes persistentes.
 
-## 18. Checklist de validação
+## 22. Checklist final
 
-- [ ] InfluxDB contém dados em `pecas_producao`;
+Antes de considerar o dashboard pronto, confirme:
+
+- [ ] `pecas_producao` existe no InfluxDB;
+- [ ] `contagem_esteira` existe no InfluxDB;
 - [ ] Grafana abre na porta 3000;
 - [ ] login realizado;
 - [ ] datasource `InfluxDB PNAAT` criado;
-- [ ] query language configurada como Flux;
-- [ ] URL interna configurada como `http://influxdb:8086`;
-- [ ] Organization configurada como `PNAAT`;
-- [ ] Token configurado;
-- [ ] Default Bucket configurado como `fabrica_futuro`;
-- [ ] Save & test retorna sucesso;
-- [ ] consulta no Explore retorna dados;
-- [ ] painel Total de peças funcionando;
-- [ ] painel Peças aprovadas funcionando;
-- [ ] painel Peças rejeitadas funcionando;
-- [ ] painel Confiança média funcionando;
-- [ ] painel Peças ao longo do tempo funcionando;
-- [ ] painel Última peça inspecionada funcionando;
-- [ ] dashboard salvo como `Fábrica do Futuro — PNAAT`;
-- [ ] nova publicação MQTT aparece no dashboard após Refresh.
+- [ ] Query language = Flux;
+- [ ] URL = `http://influxdb:8086`;
+- [ ] Organization = `PNAAT`;
+- [ ] token configurado;
+- [ ] Default Bucket = `fabrica_futuro`;
+- [ ] Save & test funciona;
+- [ ] Explore retorna `pecas_producao`;
+- [ ] Explore retorna `contagem_esteira`;
+- [ ] intervalo padrão configurado em Last 6 hours;
+- [ ] painel Peças Aprovadas criado;
+- [ ] painel Peças Rejeitadas criado;
+- [ ] painel Total de Peças criado;
+- [ ] painel CONFIANÇA MÉDIA criado;
+- [ ] painel Última Peça Inspecionada criado;
+- [ ] painel Peças Inspecionadas ao Longo do Tempo criado;
+- [ ] painel Contagem — Sensor físico criado;
+- [ ] mappings APROVADA/REJEITADA configurados;
+- [ ] unidade da confiança configurada como Percent (0.0-1.0);
+- [ ] threshold da confiança corrigido para escala 0.0–1.0;
+- [ ] dashboard organizado;
+- [ ] dashboard salvo;
+- [ ] teste de peça APROVADA realizado;
+- [ ] teste de peça REJEITADA realizado;
+- [ ] teste da contagem física realizado;
+- [ ] todos os painéis atualizam após Refresh.
 
-Com todos os itens concluídos, a cadeia MQTT → Node-RED → InfluxDB → Grafana está validada.
+Com todos os itens concluídos, o dashboard do workshop está reproduzido e a cadeia MQTT → Node-RED → InfluxDB → Grafana está validada.
