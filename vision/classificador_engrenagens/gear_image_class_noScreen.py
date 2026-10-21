@@ -11,6 +11,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from statistics import median
 
 import cv2
 import paho.mqtt.client as mqtt
@@ -32,8 +33,9 @@ ROI_CONT_W = 1
 ROI_CONT_H = 140
 
 THRESHOLD = 80
-TRIGGER_PIXELS = 10
-REARM_PIXELS = 3
+CALIBRATION_FRAMES = 30
+TRIGGER_DELTA_PIXELS = 10
+REARM_DELTA_PIXELS = 3
 REARM_FRAMES = 5
 TRACE_INTERVAL_SECONDS = 1.0
 
@@ -353,6 +355,8 @@ def main() -> None:
     estado = ESTADO_ARMADO
     frames_livres = 0
     ultimo_trace = 0.0
+    baseline_samples: list[int] = []
+    baseline_pixels: int | None = None
 
     print(
         "[CAM] contador restaurado: "
@@ -360,10 +364,15 @@ def main() -> None:
     )
 
     print(
-        "[CAM] trigger: >"
-        f"{TRIGGER_PIXELS} pixels pretos; "
-        "rearme: <="
-        f"{REARM_PIXELS} pixels pretos por "
+        "[DET] calibrando fundo com a esteira vazia: "
+        f"{CALIBRATION_FRAMES} frames"
+    )
+
+    print(
+        "[CAM] trigger: diferença >"
+        f"{TRIGGER_DELTA_PIXELS} pixels; "
+        "rearme: diferença <="
+        f"{REARM_DELTA_PIXELS} pixels por "
         f"{REARM_FRAMES} frames consecutivos"
     )
 
@@ -409,6 +418,36 @@ def main() -> None:
                 pixels_brancos
             )
 
+            if baseline_pixels is None:
+                baseline_samples.append(
+                    pixels_pretos
+                )
+
+                if (
+                    len(baseline_samples)
+                    >= CALIBRATION_FRAMES
+                ):
+                    baseline_pixels = int(
+                        round(
+                            median(
+                                baseline_samples
+                            )
+                        )
+                    )
+
+                    print(
+                        "[DET] calibração concluída: "
+                        f"baseline={baseline_pixels} "
+                        "pixels pretos"
+                    )
+
+                continue
+
+            delta_pixels = abs(
+                pixels_pretos -
+                baseline_pixels
+            )
+
             agora = time.monotonic()
 
             if (
@@ -425,8 +464,12 @@ def main() -> None:
                     "[DET] "
                     f"estado={nome_estado} "
                     f"pixels_pretos={pixels_pretos} "
-                    f"trigger=>{TRIGGER_PIXELS} "
-                    f"rearme=<={REARM_PIXELS} "
+                    f"baseline={baseline_pixels} "
+                    f"delta={delta_pixels} "
+                    f"trigger_delta=>"
+                    f"{TRIGGER_DELTA_PIXELS} "
+                    f"rearme_delta=<="
+                    f"{REARM_DELTA_PIXELS} "
                     f"frames_livres={frames_livres}/"
                     f"{REARM_FRAMES}"
                 )
@@ -436,12 +479,15 @@ def main() -> None:
             if (
                 estado == ESTADO_ARMADO
                 and
-                pixels_pretos > TRIGGER_PIXELS
+                delta_pixels >
+                    TRIGGER_DELTA_PIXELS
             ):
                 print(
                     "[DET] trigger detectado: "
                     f"pixels_pretos={pixels_pretos} "
-                    f"> {TRIGGER_PIXELS}; "
+                    f"baseline={baseline_pixels} "
+                    f"delta={delta_pixels} "
+                    f"> {TRIGGER_DELTA_PIXELS}; "
                     "iniciando inferência YOLO"
                 )
 
@@ -538,7 +584,10 @@ def main() -> None:
                 estado ==
                     ESTADO_AGUARDANDO_REARME
             ):
-                if pixels_pretos <= REARM_PIXELS:
+                if (
+                    delta_pixels <=
+                        REARM_DELTA_PIXELS
+                ):
                     frames_livres += 1
                 else:
                     frames_livres = 0
