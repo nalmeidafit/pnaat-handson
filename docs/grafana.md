@@ -13,36 +13,55 @@ Datasource utilizado:
 ### Total de peças
 
 ```flux
-from(bucket: v.defaultBucket)
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
-  |> filter(fn: (r) => r["_field"] == "id")
+from(bucket: "fabrica_futuro")
+  |> range(start: v.timeRangeStart)
+  |> filter(fn: (r) => r._measurement == "pecas_producao")
+  |> filter(fn: (r) => r._field == "confianca")
   |> count()
+  |> group()
+  |> sum()
 ```
 
 ### Peças aprovadas
 
 ```flux
-from(bucket: v.defaultBucket)
+from(bucket: "fabrica_futuro")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
-  |> filter(fn: (r) => r["_field"] == "aprovada")
-  |> filter(fn: (r) => r["_value"] == true)
+  |> filter(fn: (r) =>
+      r._measurement == "pecas_producao" and
+      r._field == "aprovada_num"
+  )
+  |> filter(fn: (r) => r._value == 1)
+  |> group()
   |> count()
 ```
 
 ### Peças rejeitadas
 
 ```flux
-from(bucket: v.defaultBucket)
+from(bucket: "fabrica_futuro")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
-  |> filter(fn: (r) => r["_field"] == "aprovada")
-  |> filter(fn: (r) => r["_value"] == false)
+  |> filter(fn: (r) =>
+      r._measurement == "pecas_producao" and
+      r._field == "aprovada_num"
+  )
+  |> filter(fn: (r) => r._value == 0)
+  |> group()
   |> count()
 ```
 
-### Confiança média
+### Confiança da ultima peça
+```flux
+from(bucket: "fabrica_futuro")
+  |> range(start: -30d)
+  |> filter(fn: (r) =>
+      r._measurement == "pecas_producao" and
+      r._field == "confianca"
+  )
+  |> group(columns: [])
+  |> last()
+```
+### Confiança Média
 
 ```flux
 from(bucket: v.defaultBucket)
@@ -63,15 +82,14 @@ Use duas queries no mesmo painel `Time series`: aprovadas e rejeitadas, cada uma
 Para manter o Stat robusto, converter booleano em 0/1 e usar Value mappings no Grafana:
 
 ```flux
-from(bucket: v.defaultBucket)
+from(bucket: "fabrica_futuro")
   |> range(start: -30d)
-  |> filter(fn: (r) => r["_measurement"] == "pecas_producao")
-  |> filter(fn: (r) => r["_field"] == "aprovada")
+  |> filter(fn: (r) =>
+      r._measurement == "pecas_producao" and
+      r._field == "aprovada_num"
+  )
+  |> group(columns: [])
   |> last()
-  |> map(fn: (r) => ({
-      r with
-      _value: if r._value then 1 else 0
-  }))
 ```
 
 Value mappings:
