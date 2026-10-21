@@ -33,6 +33,8 @@ ROI_CONT_H = 140
 
 THRESHOLD = 80
 TRIGGER_PIXELS = 10
+REARM_PIXELS = 3
+REARM_FRAMES = 5
 
 ESTADO_ARMADO = 0
 ESTADO_AGUARDANDO_REARME = 1
@@ -86,7 +88,7 @@ class MqttPublisher:
         self.host = os.getenv("PNAAT_MQTT_HOST", "127.0.0.1")
         self.port = int(os.getenv("PNAAT_MQTT_PORT", "1883"))
         self.username = os.getenv("PNAAT_MQTT_USERNAME", "pnaat")
-        self.password = os.getenv("PNAAT_MQTT_PASSWORD", "")
+        self.password = os.getenv("PNAAT_MQTT_PASSWORD", "pnaat123")
         self.prefix = os.getenv("PNAAT_TOPIC_PREFIX", "pnaat").strip("/")
 
         if not enabled:
@@ -348,10 +350,19 @@ def main() -> None:
     )
 
     estado = ESTADO_ARMADO
+    frames_livres = 0
 
     print(
         "[CAM] contador restaurado: "
         f"{camera_count}"
+    )
+
+    print(
+        "[CAM] trigger: >"
+        f"{TRIGGER_PIXELS} pixels pretos; "
+        "rearme: <="
+        f"{REARM_PIXELS} pixels pretos por "
+        f"{REARM_FRAMES} frames consecutivos"
     )
 
     print(
@@ -417,6 +428,11 @@ def main() -> None:
                     estado = (
                         ESTADO_AGUARDANDO_REARME
                     )
+                    frames_livres = 0
+                    print(
+                        "[CAM] aguardando saída da peça "
+                        "para rearme"
+                    )
                     continue
 
                 class_id = int(probas.top1)
@@ -466,18 +482,29 @@ def main() -> None:
                 estado = (
                     ESTADO_AGUARDANDO_REARME
                 )
+                frames_livres = 0
+
+                print(
+                    "[CAM] aguardando saída da peça "
+                    "para rearme"
+                )
 
             if (
                 estado ==
                     ESTADO_AGUARDANDO_REARME
-                and
-                pixels_pretos == 0
             ):
-                estado = ESTADO_ARMADO
+                if pixels_pretos <= REARM_PIXELS:
+                    frames_livres += 1
+                else:
+                    frames_livres = 0
 
-                print(
-                    "[CAM] sistema rearmado"
-                )
+                if frames_livres >= REARM_FRAMES:
+                    estado = ESTADO_ARMADO
+                    frames_livres = 0
+
+                    print(
+                        "[CAM] sistema rearmado"
+                    )
 
     finally:
         picam2.stop()
