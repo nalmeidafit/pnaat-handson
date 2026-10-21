@@ -342,7 +342,29 @@ outra classe -> INCONCLUSIVA
 
 O ESP32 utiliza `id_camera`, `resultado` e `confianca` para associar a classificação à passagem da peça pelo sensor final.
 
-## 14. Resultado esperado no monitor MQTT
+## 13. Diagnóstico do detector
+
+Durante a execução, o classificador imprime uma linha de diagnóstico aproximadamente uma vez por segundo:
+
+```text
+[DET] estado=ARMADO pixels_pretos=2 trigger=>10 rearme=<=3 frames_livres=0/5
+```
+
+Quando a região de contagem cruza o limiar de detecção, aparece imediatamente:
+
+```text
+[DET] trigger detectado: pixels_pretos=34 > 10; iniciando inferência YOLO
+[AI] inferência concluída em 85.4 ms
+```
+
+Interpretação:
+
+- se `pixels_pretos` nunca ultrapassar `10`, a peça não está cruzando a região de contagem ou o limiar/ROI precisa ser ajustado;
+- se aparecer `trigger detectado` mas não aparecer `inferência concluída`, o problema está na execução do modelo;
+- se a inferência terminar mas o sistema ficar em `AGUARDANDO_REARME`, observe `pixels_pretos` e `frames_livres`;
+- o sistema volta a `ARMADO` depois de cinco frames consecutivos com até três pixels pretos.
+
+## 15. Resultado esperado no monitor MQTT
 
 Ao passar uma engrenagem:
 
@@ -357,7 +379,7 @@ Depois, quando a mesma peça chegar ao sensor final do ESP32:
 pnaat/peca/resultado_final ...
 ```
 
-## 15. Encerramento
+## 16. Encerramento
 
 Use:
 
@@ -367,7 +389,7 @@ Ctrl+C
 
 O script encerra a câmera e a conexão MQTT de forma controlada.
 
-## 16. Checklist
+## 17. Checklist
 
 - [ ] OV5647 reconhecida por `rpicam-hello --list-cameras`;
 - [ ] `best.pt` presente na pasta;
