@@ -35,6 +35,7 @@ THRESHOLD = 80
 TRIGGER_PIXELS = 10
 REARM_PIXELS = 3
 REARM_FRAMES = 5
+TRACE_INTERVAL_SECONDS = 1.0
 
 ESTADO_ARMADO = 0
 ESTADO_AGUARDANDO_REARME = 1
@@ -351,6 +352,7 @@ def main() -> None:
 
     estado = ESTADO_ARMADO
     frames_livres = 0
+    ultimo_trace = 0.0
 
     print(
         "[CAM] contador restaurado: "
@@ -407,14 +409,57 @@ def main() -> None:
                 pixels_brancos
             )
 
+            agora = time.monotonic()
+
+            if (
+                agora - ultimo_trace >=
+                    TRACE_INTERVAL_SECONDS
+            ):
+                nome_estado = (
+                    "ARMADO"
+                    if estado == ESTADO_ARMADO
+                    else "AGUARDANDO_REARME"
+                )
+
+                print(
+                    "[DET] "
+                    f"estado={nome_estado} "
+                    f"pixels_pretos={pixels_pretos} "
+                    f"trigger=>{TRIGGER_PIXELS} "
+                    f"rearme=<={REARM_PIXELS} "
+                    f"frames_livres={frames_livres}/"
+                    f"{REARM_FRAMES}"
+                )
+
+                ultimo_trace = agora
+
             if (
                 estado == ESTADO_ARMADO
                 and
                 pixels_pretos > TRIGGER_PIXELS
             ):
+                print(
+                    "[DET] trigger detectado: "
+                    f"pixels_pretos={pixels_pretos} "
+                    f"> {TRIGGER_PIXELS}; "
+                    "iniciando inferência YOLO"
+                )
+
+                inferencia_inicio = time.monotonic()
+
                 resultados = model(
                     gray,
                     verbose=False,
+                )
+
+                inferencia_ms = (
+                    time.monotonic() -
+                    inferencia_inicio
+                ) * 1000.0
+
+                print(
+                    "[AI] inferência concluída em "
+                    f"{inferencia_ms:.1f} ms"
                 )
 
                 probas = resultados[0].probs
