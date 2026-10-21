@@ -261,24 +261,33 @@ Ao detectar uma peça, o programa:
 
 Depois de classificar uma peça, o programa entra em estado de espera até confirmar que a região de detecção ficou livre.
 
-A lógica atual usa histerese e confirmação por vários frames:
+Ao iniciar, mantenha a esteira vazia. O programa mede 30 frames e calcula a mediana de pixels pretos da região de trigger. Esse valor vira o `baseline` do fundo.
+
+A lógica atual usa a diferença absoluta em relação ao baseline, com histerese e confirmação por vários frames:
 
 ```text
-TRIGGER_PIXELS = 10
-REARM_PIXELS   = 3
-REARM_FRAMES   = 5
+CALIBRATION_FRAMES    = 30
+TRIGGER_DELTA_PIXELS  = 10
+REARM_DELTA_PIXELS    = 3
+REARM_FRAMES          = 5
 ```
+
+Exemplo: se a esteira vazia produzir cerca de 30 pixels pretos, o programa passa a considerar `baseline=30`. Uma leitura de 31 tem `delta=1`, não uma peça.
 
 Funcionamento:
 
 ```text
-pixels pretos > 10
+calibração com esteira vazia
+        ↓
+baseline calculado
+        ↓
+delta > 10
         ↓
 peça detectada e classificada
         ↓
 aguarda saída da peça
         ↓
-pixels pretos <= 3 por 5 frames consecutivos
+delta <= 3 por 5 frames consecutivos
         ↓
 sistema rearmado
         ↓
@@ -347,19 +356,19 @@ O ESP32 utiliza `id_camera`, `resultado` e `confianca` para associar a classific
 Durante a execução, o classificador imprime uma linha de diagnóstico aproximadamente uma vez por segundo:
 
 ```text
-[DET] estado=ARMADO pixels_pretos=2 trigger=>10 rearme=<=3 frames_livres=0/5
+[DET] estado=ARMADO pixels_pretos=30 baseline=30 delta=0 trigger_delta=>10 rearme_delta=<=3 frames_livres=0/5
 ```
 
 Quando a região de contagem cruza o limiar de detecção, aparece imediatamente:
 
 ```text
-[DET] trigger detectado: pixels_pretos=34 > 10; iniciando inferência YOLO
+[DET] trigger detectado: pixels_pretos=52 baseline=30 delta=22 > 10; iniciando inferência YOLO
 [AI] inferência concluída em 85.4 ms
 ```
 
 Interpretação:
 
-- se `pixels_pretos` nunca ultrapassar `10`, a peça não está cruzando a região de contagem ou o limiar/ROI precisa ser ajustado;
+- se o `delta` nunca ultrapassar `10` durante a passagem da peça, a peça não está alterando suficientemente a região de contagem; nesse caso, ajuste a ROI/posição física antes de alterar o limiar;
 - se aparecer `trigger detectado` mas não aparecer `inferência concluída`, o problema está na execução do modelo;
 - se a inferência terminar mas o sistema ficar em `AGUARDANDO_REARME`, observe `pixels_pretos` e `frames_livres`;
 - o sistema volta a `ARMADO` depois de cinco frames consecutivos com até três pixels pretos.
