@@ -4,6 +4,111 @@ Projeto do **PNAAT Hands-on** para **ESP-IDF v5.5.2** e **ESP32-S3**.
 
 O firmware foi organizado para permitir habilitar ou desabilitar individualmente sensor, LEDs e controle da esteira pelo `menuconfig`. As opções desabilitadas não impedem a compilação das demais funções.
 
+## Preparar o ambiente de desenvolvimento no Windows
+
+Durante o workshop, o firmware do ESP32-S3 será aberto, configurado, compilado e gravado usando **Visual Studio Code + extensão oficial Espressif IDF**.
+
+O projeto foi validado com:
+
+```text
+ESP-IDF v5.5.2
+Target: ESP32-S3
+```
+
+> Não instale automaticamente a versão estável mais recente do ESP-IDF. Para reproduzir o ambiente usado no projeto, selecione explicitamente a versão **v5.5.2**.
+
+### 1. Instalar o Visual Studio Code
+
+Instale o Visual Studio Code no notebook Windows.
+
+Depois de instalado, abra o VS Code.
+
+### 2. Instalar a extensão Espressif IDF
+
+No VS Code:
+
+1. abra **Extensions** com `Ctrl+Shift+X`;
+2. procure por `ESP-IDF`;
+3. instale a extensão oficial **Espressif IDF**.
+
+### 3. Instalar o ESP-IDF v5.5.2
+
+Abra a Command Palette:
+
+```text
+Ctrl+Shift+P
+```
+
+Procure e execute:
+
+```text
+ESP-IDF: Open ESP-IDF Installation Manager
+```
+
+No Installation Manager:
+
+1. inicie a instalação;
+2. escolha uma instalação normal/Easy Installation;
+3. selecione explicitamente **ESP-IDF v5.5.2**;
+4. conclua a instalação das ferramentas e do ambiente Python.
+
+As versões atuais da extensão utilizam o **ESP-IDF Installation Manager (EIM)**. Não procure o comando antigo `ESP-IDF: Configure ESP-IDF Extension`, pois ele foi substituído pelo Installation Manager.
+
+### 4. Confirmar a instalação
+
+No VS Code, abra novamente:
+
+```text
+Ctrl+Shift+P
+```
+
+Execute:
+
+```text
+ESP-IDF: Open ESP-IDF Terminal
+```
+
+No terminal aberto pela extensão, execute:
+
+```powershell
+idf.py --version
+```
+
+O resultado deve indicar:
+
+```text
+ESP-IDF v5.5.2
+```
+
+Não prossiga enquanto outra versão estiver selecionada.
+
+### 5. Abrir o projeto ESP32
+
+Se o repositório já foi clonado no notebook, no VS Code escolha:
+
+```text
+File → Open Folder
+```
+
+e abra somente a pasta:
+
+```text
+pnaat-handson\esp32
+```
+
+Essa pasta contém o `CMakeLists.txt` raiz do projeto ESP-IDF.
+
+O target já está fixado como `ESP32-S3` no projeto, portanto não é necessário executar `idf.py set-target esp32s3`.
+
+### 6. Conectar a placa
+
+Conecte o ESP32-S3 ao notebook através do cabo USB.
+
+Se necessário, na Command Palette utilize os comandos ESP-IDF para selecionar a porta serial da placa.
+
+A partir desse ponto o projeto pode ser configurado pelo `menuconfig`, compilado, gravado e monitorado pelo terminal ESP-IDF ou pelos comandos da extensão.
+
+
 ## Funções atuais
 
 - target fixo em ESP32-S3;

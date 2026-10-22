@@ -128,18 +128,6 @@ git status
 git log -1 --oneline
 ```
 
-### Se o repositório estiver privado
-
-Um clone sem autenticação pode retornar `Repository not found`. Nesse caso, uma opção prática é usar o GitHub CLI:
-
-```bash
-sudo apt install -y gh
-gh auth login
-gh repo clone nalmeidafit/pnaat-handson
-```
-
-O login é interativo. **Não coloque token, senha ou credencial dentro de scripts ou arquivos versionados.**
-
 ## 5. Entrar na stack MING
 
 Acesse:
@@ -291,7 +279,7 @@ Garanta permissão de travessia das pastas e leitura dos arquivos:
 chmod 755 mosquitto
 chmod 755 mosquitto/config
 chmod 644 mosquitto/config/mosquitto.conf
-chmod 644 mosquitto/config/password.txt
+sudo chmod 644 mosquitto/config/password.txt
 ```
 
 Confira:
@@ -374,6 +362,8 @@ docker compose logs --tail=100 grafana
 ```
 
 ## 13. Testar o Mosquitto
+
+Nos **dois comandos abaixo**, substitua `SUA_SENHA_MQTT` pela mesma senha definida para o usuário MQTT `pnaat` no item 8.
 
 Abra um terminal e execute:
 
@@ -509,15 +499,11 @@ Acompanhar logs:
 docker compose logs -f
 ```
 
-## 19. Não apagar os volumes por engano
+## 19. Preservar os dados da stack
 
-Durante a operação normal, **não execute**:
+Durante o workshop, para parar, reiniciar ou subir novamente a stack, utilize somente os comandos apresentados no item 18.
 
-```bash
-docker compose down -v
-```
-
-A opção `-v` remove os volumes persistentes e pode apagar configurações e dados do InfluxDB, Node-RED, Grafana e Mosquitto.
+Evite opções de remoção de volumes persistentes. Esses volumes armazenam configurações e dados do InfluxDB, Node-RED, Grafana e Mosquitto e não devem ser apagados durante a operação normal.
 
 ## 20. Checklist de validação
 
