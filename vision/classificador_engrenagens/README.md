@@ -55,52 +55,43 @@ classificador_engrenagens/
 
 O arquivo `best.pt` deve ficar **na mesma pasta do script**.
 
-## 1. Partir de uma Raspberry Pi recém-instalada
+## Antes de começar
 
-Este procedimento considera uma Raspberry Pi 5 com Raspberry Pi OS 64 bits, rede configurada e acesso ao terminal.
+Este é o **guia operacional da visão de máquina** usado no workshop.
 
-Atualize o sistema:
+Se você está seguindo a ordem recomendada do [README principal](../../README.md), a Raspberry Pi já foi preparada na etapa MING e o repositório já está disponível em:
 
-```bash
-sudo apt update
-sudo apt full-upgrade -y
-sudo reboot
+```text
+~/pnaat-handson
 ```
 
-Após o reboot, abra novamente o terminal.
+Não é necessário clonar novamente o repositório nem repetir a instalação do Docker.
 
-## 2. Obter ou atualizar o repositório
+Antes de continuar, confirme que você está na Raspberry Pi usada na bancada e que a câmera OV5647 está conectada com o equipamento desligado.
 
-Se o repositório ainda não foi clonado:
+## 1. Atualizar o repositório
 
-```bash
-cd ~
-git clone https://github.com/nalmeidafit/pnaat-handson.git
-```
-
-Como o repositório é público, **não é necessário fazer login no GitHub para o clone**.
-
-Entre no projeto:
+Entre na raiz do projeto:
 
 ```bash
 cd ~/pnaat-handson
 ```
 
-Confirme:
+Atualize a branch principal:
 
 ```bash
-git status
-git log -1 --oneline
-```
-
-Se o repositório já estava clonado durante a instalação do MING, apenas atualize:
-
-```bash
-cd ~/pnaat-handson
 git pull --ff-only origin main
 ```
 
-## 3. Instalar as dependências de sistema
+Depois entre na pasta correta da visão de máquina:
+
+```bash
+cd ~/pnaat-handson/vision/classificador_engrenagens
+```
+
+A partir deste ponto, todos os comandos deste guia que não indicarem outro caminho devem ser executados nessa pasta.
+
+## 2. Instalar as dependências de sistema
 
 Instale os pacotes usados pela câmera, Picamera2, ambiente virtual e OpenCV:
 
@@ -113,9 +104,7 @@ sudo apt install -y \
   python3-opencv
 ```
 
-O pacote `rpicam-apps` fornece os utilitários de teste da câmera utilizados nas etapas seguintes.
-
-## 4. Confirmar que a câmera é reconhecida
+## 3. Confirmar que a câmera é reconhecida
 
 Liste as câmeras:
 
@@ -133,15 +122,17 @@ rpicam-hello
 
 Uma janela de visualização deve abrir por alguns segundos.
 
-> Para executar a versão visual `gear_image_class.py`, é necessário estar em uma sessão gráfica da Raspberry Pi, por exemplo com monitor conectado ou acesso remoto a um desktop gráfico. SSH puro, sem encaminhamento gráfico, deve usar a versão `gear_image_class_noScreen.py`.
+> A versão visual `gear_image_class.py` também precisa de uma sessão gráfica da Raspberry Pi. Em SSH puro, sem encaminhamento gráfico, use `gear_image_class_noScreen.py`.
 
-## 5. Entrar na pasta do classificador
+## 4. Conferir os arquivos do classificador
+
+Garanta que continua na pasta:
 
 ```bash
 cd ~/pnaat-handson/vision/classificador_engrenagens
 ```
 
-Confira os arquivos:
+Confira:
 
 ```bash
 ls -lh
@@ -157,9 +148,9 @@ best.pt
 best.pt.sha256
 ```
 
-O modelo `best.pt` já faz parte da branch `main`; não é necessário copiá-lo manualmente para uma instalação nova.
+O modelo `best.pt` já faz parte da branch `main`; não é necessário copiá-lo manualmente.
 
-## 6. Validar o modelo
+## 5. Validar o modelo
 
 Calcule o SHA-256:
 
@@ -173,9 +164,9 @@ Valor esperado:
 fd7c021806c16d44fb26c76eaeb2a4ba469627a9bce12da198bc98acf7ea2ed2
 ```
 
-Se o hash for diferente, atualize o repositório antes de continuar.
+Se o hash for diferente, interrompa esta etapa e confira se o repositório foi atualizado corretamente.
 
-## 7. Criar o ambiente virtual
+## 6. Criar o ambiente virtual
 
 O Picamera2 é fornecido pelo Raspberry Pi OS. Por isso, crie o ambiente virtual com acesso aos pacotes do sistema:
 
@@ -204,7 +195,7 @@ O caminho do Python deve apontar para:
 .../classificador_engrenagens/.venv/bin/python
 ```
 
-## 8. Instalar os requirements
+## 7. Instalar os requirements
 
 Com o `.venv` ativado:
 
@@ -215,7 +206,7 @@ python -m pip install -r requirements.txt
 
 O arquivo atual instala as dependências Python do classificador, incluindo Ultralytics e Paho MQTT.
 
-## 9. Validar os imports
+## 8. Validar os imports
 
 Ainda com o ambiente ativado:
 
@@ -232,7 +223,7 @@ Ultralytics 8.4.168
 
 Não prossiga enquanto este teste falhar.
 
-## 10. Primeiro teste — câmera + YOLO sem MQTT
+## 9. Primeiro teste — câmera + YOLO sem MQTT
 
 Mantenha a esteira **vazia durante a inicialização**, pois o programa usa os primeiros 30 frames para calibrar o fundo.
 
@@ -253,7 +244,7 @@ O programa deve:
 
 Use `Ctrl+C` para encerrar.
 
-## 11. Testar a versão com visualização
+## 10. Testar a versão com visualização
 
 Em uma sessão gráfica da Raspberry Pi, ainda com o `.venv` ativado:
 
@@ -290,7 +281,7 @@ Q
 
 Somente depois de validar câmera, modelo, calibração e classificação local continue para a integração MQTT.
 
-## 12. Configurar MQTT
+## 11. Configurar MQTT
 
 O script lê:
 
@@ -321,7 +312,7 @@ echo
 export PNAAT_MQTT_PASSWORD
 ```
 
-## 13. Abrir um monitor MQTT
+## 12. Abrir um monitor MQTT
 
 Em outro terminal da Raspberry Pi, substitua `SUA_SENHA_MQTT` pela senha definida para o usuário MQTT `pnaat` durante a instalação do Mosquitto:
 
@@ -340,7 +331,7 @@ docker exec -it pnaat-mosquitto \
 
 Deixe esse terminal aberto.
 
-## 14. Executar o sistema completo
+## 13. Executar o sistema completo
 
 Volte ao terminal do classificador.
 
@@ -377,7 +368,7 @@ Ao detectar uma peça, o programa:
 6. publica a contagem;
 7. publica o resultado da classificação.
 
-## 15. Rearme entre peças
+## 14. Rearme entre peças
 
 Depois de classificar uma peça, o programa entra em estado de espera até confirmar que a região de detecção ficou livre.
 
@@ -428,7 +419,7 @@ E, após a região ficar livre:
 
 A confirmação por 5 frames evita rearme falso por ruído ou variação momentânea da imagem. O limite de rearme não exige mais zero pixels pretos, porque pequenas sombras ou ruídos da câmera podem impedir que a contagem chegue exatamente a zero.
 
-## 16. Tópicos publicados
+## 15. Tópicos publicados
 
 Contagem:
 
@@ -471,7 +462,7 @@ outra classe -> INCONCLUSIVA
 
 O ESP32 utiliza `id_camera`, `resultado` e `confianca` para associar a classificação à passagem da peça pelo sensor final.
 
-## 17. Diagnóstico do detector
+## 16. Diagnóstico do detector
 
 Durante a execução, o classificador imprime uma linha de diagnóstico aproximadamente uma vez por segundo:
 
@@ -493,7 +484,7 @@ Interpretação:
 - se a inferência terminar mas o sistema ficar em `AGUARDANDO_REARME`, observe `pixels_pretos` e `frames_livres`;
 - o sistema volta a `ARMADO` depois de cinco frames consecutivos com `delta <= 3` em relação ao baseline.
 
-## 18. Resultado esperado no monitor MQTT
+## 17. Resultado esperado no monitor MQTT
 
 Ao passar uma engrenagem:
 
@@ -508,7 +499,7 @@ Depois, quando a mesma peça chegar ao sensor final do ESP32:
 pnaat/peca/resultado_final ...
 ```
 
-## 19. Encerramento
+## 18. Encerramento
 
 Use:
 
@@ -518,7 +509,7 @@ Ctrl+C
 
 O script encerra a câmera e a conexão MQTT de forma controlada.
 
-## 20. Checklist
+## 19. Checklist
 
 - [ ] OV5647 reconhecida por `rpicam-hello --list-cameras`;
 - [ ] `best.pt` presente na pasta;

@@ -20,9 +20,11 @@ vision/
 ├── classificador_engrenagens/
 │   ├── README.md
 │   ├── .env.example
+│   ├── gear_image_class.py
 │   ├── gear_image_class_noScreen.py
 │   ├── requirements.txt
-│   └── best.pt
+│   ├── best.pt
+│   └── best.pt.sha256
 ├── camera_test.py
 ├── gear_inspection_v0_3.py
 └── moving_gear_inspection.py
@@ -49,6 +51,33 @@ pnaat/visao/resultado
   ├── ESP32-S3 → associação com sensor final → LEDs
   └── Node-RED → InfluxDB → Grafana
 ```
+
+## Por onde começar
+
+Se o objetivo é **instalar e executar a visão de máquina durante o workshop**, não é necessário seguir os demais arquivos desta pasta.
+
+Use diretamente:
+
+[**classificador_engrenagens/README.md — instalação e execução passo a passo**](classificador_engrenagens/README.md)
+
+Esse guia parte do ponto em que o repositório `pnaat-handson` já foi clonado pela etapa de instalação do MING e conduz até:
+
+- instalação das dependências da câmera;
+- teste da OV5647;
+- criação do ambiente virtual;
+- instalação das bibliotecas Python;
+- validação do `best.pt`;
+- execução do classificador sem MQTT;
+- execução do classificador visual;
+- integração MQTT.
+
+A partir da raiz do repositório, a pasta correta é:
+
+```bash
+cd ~/pnaat-handson/vision/classificador_engrenagens
+```
+
+As demais seções deste README servem como referência sobre a estrutura e o histórico da parte de visão.
 
 ## Classificador usado na bancada
 

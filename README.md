@@ -122,17 +122,36 @@ O firmware usa ESP-IDF v5.5.2 e possui:
 
 ### 3. Visão de máquina
 
-Consulte:
-
-[vision/README.md](vision/README.md)
-
-O classificador operacional está em:
+Se você está seguindo este roteiro desde o item 1, o repositório **já está clonado** em:
 
 ```text
-vision/classificador_engrenagens/
+~/pnaat-handson
 ```
 
-Ele publica:
+Para instalar as dependências da câmera e do classificador e chegar até o programa de visão funcionando, siga diretamente o guia operacional:
+
+[**Instalação e execução do classificador de engrenagens**](vision/classificador_engrenagens/README.md)
+
+O primeiro comando dessa etapa será:
+
+```bash
+cd ~/pnaat-handson/vision/classificador_engrenagens
+```
+
+O arquivo [vision/README.md](vision/README.md) permanece como visão geral da arquitetura de visão, aquisição de imagens e histórico dos scripts, mas **não é o roteiro principal de instalação**.
+
+Ao final do guia operacional você terá validado:
+
+- câmera OV5647;
+- Picamera2;
+- ambiente virtual Python;
+- Ultralytics e dependências;
+- modelo `best.pt`;
+- classificador sem interface gráfica;
+- classificador com visualização;
+- integração MQTT.
+
+O classificador publica:
 
 ```text
 pnaat/contagem/camera
@@ -195,12 +214,9 @@ Já disponível:
 
 Pendências principais:
 
-- garantir que o modelo `best.pt` validado esteja presente no clone usado em cada bancada;
-- confirmar os GPIOs físicos definitivos dos LEDs;
-- testar visão → MQTT → ESP32 → LEDs;
-- validar o fluxo final no Node-RED/InfluxDB/Grafana;
+- confirmar os GPIOs físicos definitivos dos LEDs em cada montagem;
 - adicionar os arquivos STL/STEP definitivos;
-- atualizar a apostila com os procedimentos finais.
+- manter a apostila sincronizada com os procedimentos finais validados em bancada.
 
 O acompanhamento da entrega está na issue **#1**.
 
@@ -213,10 +229,6 @@ O acompanhamento da entrega está na issue **#1**.
 
 ## Persistência
 
-Na operação normal do MING, não use:
+Na operação normal do MING, utilize somente os comandos documentados em [docs/instalacao-ming.md](docs/instalacao-ming.md) para iniciar, parar ou reiniciar a stack.
 
-```bash
-docker compose down -v
-```
-
-O parâmetro `-v` remove volumes persistentes.
+Os volumes persistentes armazenam configurações e dados do InfluxDB, Node-RED, Grafana e Mosquitto e não devem ser removidos durante o workshop.
