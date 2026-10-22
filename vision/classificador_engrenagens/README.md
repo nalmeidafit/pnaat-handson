@@ -353,11 +353,19 @@ source .venv/bin/activate
 
 Reconfigure as variáveis MQTT caso elas não existam nesse novo shell.
 
-Execute:
+Para operação normal sem interface gráfica:
 
 ```bash
 python gear_image_class_noScreen.py
 ```
+
+Para acompanhar a imagem, ROI, trigger e resultado em uma sessão gráfica da Raspberry Pi:
+
+```bash
+python gear_image_class.py
+```
+
+As duas versões usam a mesma lógica de detecção e publicam os mesmos tópicos MQTT.
 
 Ao detectar uma peça, o programa:
 
@@ -483,7 +491,7 @@ Interpretação:
 - se o `delta` nunca ultrapassar `10` durante a passagem da peça, a peça não está alterando suficientemente a região de contagem; nesse caso, ajuste a ROI/posição física antes de alterar o limiar;
 - se aparecer `trigger detectado` mas não aparecer `inferência concluída`, o problema está na execução do modelo;
 - se a inferência terminar mas o sistema ficar em `AGUARDANDO_REARME`, observe `pixels_pretos` e `frames_livres`;
-- o sistema volta a `ARMADO` depois de cinco frames consecutivos com até três pixels pretos.
+- o sistema volta a `ARMADO` depois de cinco frames consecutivos com `delta <= 3` em relação ao baseline.
 
 ## 18. Resultado esperado no monitor MQTT
 
@@ -520,7 +528,8 @@ O script encerra a câmera e a conexão MQTT de forma controlada.
 - [ ] requirements instalados;
 - [ ] imports validados;
 - [ ] Ultralytics 8.4.168 confirmado;
-- [ ] execução com `--no-mqtt` funciona;
+- [ ] execução de `gear_image_class_noScreen.py --no-mqtt` funciona;
+- [ ] versão visual `gear_image_class.py --no-mqtt` abre as janelas e classifica uma peça em sessão gráfica;
 - [ ] Mosquitto está em execução;
 - [ ] variáveis MQTT configuradas;
 - [ ] conexão MQTT confirmada;
