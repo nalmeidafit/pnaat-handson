@@ -1,5 +1,26 @@
 # Classificador de engrenagens — YOLO + MQTT
 
+## Modos de execução do classificador
+
+A pasta contém duas versões do classificador, com a mesma lógica de detecção, calibração do fundo, rearme, contagem persistente e publicação MQTT:
+
+```text
+gear_image_class_noScreen.py
+```
+
+Versão recomendada para operação normal, SSH e execução sem ambiente gráfico.
+
+```text
+gear_image_class.py
+```
+
+Versão de bancada com visualização. Exibe a imagem da câmera, ROI principal, linha de trigger, FPS, pixels pretos, baseline, delta, estado do detector, contagem e a última classificação. Pressione `Esc` ou `Q` para encerrar.
+
+A versão visual requer sessão gráfica disponível na Raspberry Pi. Para operação remota somente por terminal, utilize a versão `noScreen`.
+
+O modelo consolidado `best.pt` é versionado nesta pasta. O arquivo `best.pt.sha256` permite validar sua integridade.
+
+
 Este diretório contém a versão operacional do classificador usado no workshop, executada na Raspberry Pi 5 com câmera OV5647 e integrada ao Mosquitto.
 
 ## Modelo validado
