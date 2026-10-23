@@ -8,6 +8,15 @@
 #include "nvs.h"
 #include "sdkconfig.h"
 
+/*
+ * Opções bool desabilitadas pelo Kconfig podem não ser geradas como
+ * macros em sdkconfig.h. Para o hardware PNAAT, pull-up interno desligado
+ * é o comportamento esperado; portanto, trate a ausência da opção como 0.
+ */
+#ifndef CONFIG_PNAAT_COUNTER_SENSOR_PULLUP
+#define CONFIG_PNAAT_COUNTER_SENSOR_PULLUP 0
+#endif
+
 static const char *TAG = "counter";
 static QueueHandle_t s_queue;
 static uint32_t s_count;
