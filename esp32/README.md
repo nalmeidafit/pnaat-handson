@@ -410,6 +410,6 @@ Não é necessário validar ainda uma classificação real da câmera. Essa vali
 
 Com o ESP32 operacional e o Mosquitto já funcionando, continue em:
 
-[**Instalação e execução do classificador de engrenagens**](../vision/classificador_engrenagens/README.md)
+[**Visão de máquina — instalação e operação**](../vision/README.md)
 
 Nessa etapa a Raspberry Pi será preparada para capturar as imagens da OV5647, executar o modelo YOLO, publicar `pnaat/visao/resultado` e finalmente testar a associação câmera ↔ sensor no ESP32.
