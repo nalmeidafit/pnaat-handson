@@ -1034,3 +1034,21 @@ Antes de considerar o dashboard pronto, confirme:
 - [ ] todos os painéis atualizam após Refresh.
 
 Com todos os itens concluídos, o dashboard do workshop está reproduzido e a cadeia MQTT → Node-RED → InfluxDB → Grafana está validada.
+
+## Próxima etapa — montagem física e validação final
+
+A instalação lógica do sistema está concluída. Continue com os modelos e suportes mecânicos da bancada em:
+
+[**Montagens mecânicas — modelos 3D**](../montagens-mecanicas/modelos-3d/README.md)
+
+Depois da montagem física, retorne ao [README principal](../README.md) e execute a validação integrada da sequência completa:
+
+```text
+câmera → YOLO → MQTT → ESP32 → sensor/LEDs
+                         ↓
+                      Node-RED
+                         ↓
+                      InfluxDB
+                         ↓
+                       Grafana
+```
