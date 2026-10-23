@@ -525,4 +525,21 @@ Antes de seguir para ESP32 e visão computacional, confirme:
 - [ ] Grafana responde na porta 3000;
 - [ ] IP da Raspberry Pi anotado.
 
-Com estes itens concluídos, a infraestrutura MING está pronta para receber o ESP32 e o módulo de visão.
+Com estes itens concluídos, a infraestrutura MING está pronta.
+
+## Próxima etapa — ESP32-S3
+
+Não avance para a visão ainda. O próximo módulo a ser instalado é o ESP32-S3, que depende do Mosquitto configurado nesta etapa.
+
+Antes de sair deste guia, tenha em mãos:
+
+- o endereço IPv4 da Raspberry Pi;
+- o usuário MQTT `pnaat`;
+- a senha MQTT criada no item 8;
+- o Mosquitto respondendo ao teste de publicação/assinatura.
+
+Continue em:
+
+[**ESP32-S3 — instalação, configuração, compilação e gravação**](../esp32/README.md)
+
+Ao final do guia do ESP32 haverá um link para a instalação da visão de máquina.
