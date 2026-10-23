@@ -5,7 +5,7 @@ Este guia parte de uma instalação MING já concluída conforme [instalacao-min
 Na sequência recomendada do workshop, o ESP32 e a visão de máquina também já devem estar instalados e validados:
 
 - [ESP32-S3](../esp32/README.md)
-- [Visão de máquina](../vision/classificador_engrenagens/README.md)
+- [Visão de máquina](../vision/README.md)
 
 O objetivo agora é configurar o Node-RED desde uma instalação vazia até receber as mensagens MQTT reais do projeto e gravá-las no InfluxDB. Os testes manuais continuam disponíveis para diagnosticar cada trecho do fluxo, mas o critério final desta etapa é receber dados produzidos pelo sistema real.
 
