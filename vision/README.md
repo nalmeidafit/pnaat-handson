@@ -28,7 +28,7 @@ O roteiro abaixo parte do repositório já clonado em `~/pnaat-handson` e conduz
 
 ## Modos de execução do classificador
 
-A pasta contém duas versões do classificador, com a mesma lógica de detecção, calibração do fundo, rearme, contagem persistente e publicação MQTT:
+A pasta `vision/classificador_engrenagens/` contém duas versões do classificador, com a mesma lógica de detecção, calibração do fundo, rearme, contagem persistente e publicação MQTT:
 
 ```text
 gear_image_class_noScreen.py
@@ -44,10 +44,10 @@ Versão de bancada com visualização. Exibe a imagem da câmera, ROI principal,
 
 A versão visual requer sessão gráfica disponível na Raspberry Pi. Para operação remota somente por terminal, utilize a versão `noScreen`.
 
-O modelo consolidado `best.pt` é versionado nesta pasta. O arquivo `best.pt.sha256` permite validar sua integridade.
+O modelo consolidado `best.pt` é versionado em `vision/classificador_engrenagens/`. O arquivo `best.pt.sha256`, localizado no mesmo diretório, permite validar sua integridade.
 
 
-Este diretório contém a versão operacional do classificador usado no workshop, executada na Raspberry Pi 5 com câmera OV5647 e integrada ao Mosquitto.
+A etapa utiliza os arquivos operacionais do diretório `vision/classificador_engrenagens/`, executados na Raspberry Pi 5 com câmera OV5647 e integrados ao Mosquitto.
 
 ## Modelo validado
 
@@ -79,7 +79,7 @@ classificador_engrenagens/
 └── .venv/                  # criada localmente; não vai para o Git
 ```
 
-O arquivo `best.pt` deve ficar **na mesma pasta do script**.
+O arquivo `best.pt` deve permanecer em `vision/classificador_engrenagens/`, na mesma pasta dos scripts de classificação.
 
 ## Antes de começar
 
