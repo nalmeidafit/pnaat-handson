@@ -1,47 +1,13 @@
-# Classificador de engrenagens — YOLO + MQTT
+# Classificador de engrenagens — referência dos arquivos
 
-## Modos de execução do classificador
+Este diretório contém os arquivos usados pelo classificador YOLO do PNAAT Hands-on.
 
-A pasta contém duas versões do classificador, com a mesma lógica de detecção, calibração do fundo, rearme, contagem persistente e publicação MQTT:
+> **Para instalar e executar a visão de máquina durante o workshop, não comece por este arquivo.**  
+> O roteiro oficial e completo está em:
+>
+> [**../README.md — Visão de máquina: instalação e operação**](../README.md)
 
-```text
-gear_image_class_noScreen.py
-```
-
-Versão recomendada para operação normal, SSH e execução sem ambiente gráfico.
-
-```text
-gear_image_class.py
-```
-
-Versão de bancada com visualização. Exibe a imagem da câmera, ROI principal, linha de trigger, FPS, pixels pretos, baseline, delta, estado do detector, contagem e a última classificação. Pressione `Esc` ou `Q` para encerrar.
-
-A versão visual requer sessão gráfica disponível na Raspberry Pi. Para operação remota somente por terminal, utilize a versão `noScreen`.
-
-O modelo consolidado `best.pt` é versionado nesta pasta. O arquivo `best.pt.sha256` permite validar sua integridade.
-
-
-Este diretório contém a versão operacional do classificador usado no workshop, executada na Raspberry Pi 5 com câmera OV5647 e integrada ao Mosquitto.
-
-## Modelo validado
-
-O arquivo fornecido para a bancada foi verificado e possui:
-
-```text
-Arquivo:       best.pt
-Tamanho:       aproximadamente 2,9 MB
-Tipo:          Ultralytics ClassificationModel
-Base:          yolov8n-cls
-Ultralytics:   8.4.168
-Task:          classify
-Classe 0:      NOK
-Classe 1:      OK
-SHA-256:       fd7c021806c16d44fb26c76eaeb2a4ba469627a9bce12da198bc98acf7ea2ed2
-```
-
-A versão de Ultralytics usada pelo modelo coincide com a versão fixada em `requirements.txt`.
-
-## Estrutura esperada
+## Arquivos principais
 
 ```text
 classificador_engrenagens/
@@ -50,537 +16,111 @@ classificador_engrenagens/
 ├── requirements.txt
 ├── .env.example
 ├── best.pt
-└── .venv/                  # criada localmente; não vai para o Git
+└── best.pt.sha256
 ```
 
-O arquivo `best.pt` deve ficar **na mesma pasta do script**.
+### gear_image_class_noScreen.py
 
-## Antes de começar
+Versão recomendada para operação normal, SSH e execução sem ambiente gráfico.
 
-Este é o **guia operacional da visão de máquina** usado no workshop.
+Ela executa:
 
-Se você está seguindo a ordem recomendada do [README principal](../../README.md), a Raspberry Pi já foi preparada na etapa MING e o repositório já está disponível em:
+- captura pela OV5647 usando Picamera2;
+- calibração automática do fundo;
+- detecção por ROI/trigger;
+- classificação YOLO;
+- persistência da contagem da câmera;
+- publicação MQTT;
+- rearme para a peça seguinte.
 
-```text
-~/pnaat-handson
-```
+### gear_image_class.py
 
-Não é necessário clonar novamente o repositório nem repetir a instalação do Docker.
+Versão de bancada com visualização.
 
-Antes de continuar, confirme que você está na Raspberry Pi usada na bancada e que a câmera OV5647 está conectada com o equipamento desligado.
+Ela usa a mesma lógica do programa sem tela, mas também apresenta:
 
-## 1. Atualizar o repositório
-
-Entre na raiz do projeto:
-
-```bash
-cd ~/pnaat-handson
-```
-
-Atualize a branch principal:
-
-```bash
-git pull --ff-only origin main
-```
-
-Depois entre na pasta correta da visão de máquina:
-
-```bash
-cd ~/pnaat-handson/vision/classificador_engrenagens
-```
-
-A partir deste ponto, todos os comandos deste guia que não indicarem outro caminho devem ser executados nessa pasta.
-
-## 2. Instalar as dependências de sistema
-
-Instale os pacotes usados pela câmera, Picamera2, ambiente virtual e OpenCV:
-
-```bash
-sudo apt update
-sudo apt install -y \
-  rpicam-apps \
-  python3-picamera2 \
-  python3-venv \
-  python3-opencv
-```
-
-## 3. Confirmar que a câmera é reconhecida
-
-Liste as câmeras:
-
-```bash
-rpicam-hello --list-cameras
-```
-
-A câmera OV5647 deve aparecer na lista.
-
-Em uma sessão gráfica da Raspberry Pi, faça também um teste de preview:
-
-```bash
-rpicam-hello
-```
-
-Uma janela de visualização deve abrir por alguns segundos.
-
-> A versão visual `gear_image_class.py` também precisa de uma sessão gráfica da Raspberry Pi. Em SSH puro, sem encaminhamento gráfico, use `gear_image_class_noScreen.py`.
-
-## 4. Conferir os arquivos do classificador
-
-Garanta que continua na pasta:
-
-```bash
-cd ~/pnaat-handson/vision/classificador_engrenagens
-```
-
-Confira:
-
-```bash
-ls -lh
-```
-
-Devem existir pelo menos:
-
-```text
-gear_image_class.py
-gear_image_class_noScreen.py
-requirements.txt
-best.pt
-best.pt.sha256
-```
-
-O modelo `best.pt` já faz parte da branch `main`; não é necessário copiá-lo manualmente.
-
-## 5. Validar o modelo
-
-Calcule o SHA-256:
-
-```bash
-sha256sum best.pt
-```
-
-Valor esperado:
-
-```text
-fd7c021806c16d44fb26c76eaeb2a4ba469627a9bce12da198bc98acf7ea2ed2
-```
-
-Se o hash for diferente, interrompa esta etapa e confira se o repositório foi atualizado corretamente.
-
-## 6. Criar o ambiente virtual
-
-O Picamera2 é fornecido pelo Raspberry Pi OS. Por isso, crie o ambiente virtual com acesso aos pacotes do sistema:
-
-```bash
-python3 -m venv --system-site-packages .venv
-```
-
-Ative:
-
-```bash
-source .venv/bin/activate
-```
-
-O prompt deve passar a mostrar `(.venv)`.
-
-Confirme:
-
-```bash
-which python
-python --version
-```
-
-O caminho do Python deve apontar para:
-
-```text
-.../classificador_engrenagens/.venv/bin/python
-```
-
-## 7. Instalar os requirements
-
-Com o `.venv` ativado:
-
-```bash
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-O arquivo atual instala as dependências Python do classificador, incluindo Ultralytics e Paho MQTT.
-
-## 8. Validar os imports
-
-Ainda com o ambiente ativado:
-
-```bash
-python -c "import cv2; import paho.mqtt.client; import ultralytics; from picamera2 import Picamera2; print('Dependencias OK'); print('Ultralytics', ultralytics.__version__)"
-```
-
-Resultado esperado inclui:
-
-```text
-Dependencias OK
-Ultralytics 8.4.168
-```
-
-Não prossiga enquanto este teste falhar.
-
-## 9. Primeiro teste — câmera + YOLO sem MQTT
-
-Mantenha a esteira **vazia durante a inicialização**, pois o programa usa os primeiros 30 frames para calibrar o fundo.
-
-Para testar via terminal/SSH, sem abrir janelas:
-
-```bash
-python gear_image_class_noScreen.py --no-mqtt
-```
-
-O programa deve:
-
-1. localizar `best.pt`;
-2. carregar o modelo YOLO;
-3. iniciar a OV5647;
-4. calibrar o fundo com 30 frames;
-5. restaurar a contagem local da câmera;
-6. ficar aguardando uma peça.
-
-Use `Ctrl+C` para encerrar.
-
-## 10. Testar a versão com visualização
-
-Em uma sessão gráfica da Raspberry Pi, ainda com o `.venv` ativado:
-
-```bash
-python gear_image_class.py --no-mqtt
-```
-
-A janela principal deve apresentar:
-
-- imagem ao vivo da câmera;
-- ROI principal;
-- região/linha de trigger;
+- imagem ao vivo;
+- ROI;
+- linha/região de trigger;
 - FPS;
 - pixels pretos;
 - baseline;
 - delta;
 - estado do detector;
-- contagem da câmera;
+- contagem;
 - última classificação.
 
-Ao passar uma engrenagem, deve abrir também a janela de resultado com a classificação.
+Use esta versão somente em sessão gráfica disponível na Raspberry Pi.
 
-Para encerrar a versão visual, pressione:
+## Modelo YOLO
 
-```text
-Esc
-```
-
-ou:
+O modelo operacional é:
 
 ```text
-Q
+best.pt
 ```
 
-Somente depois de validar câmera, modelo, calibração e classificação local continue para a integração MQTT.
+O arquivo deve permanecer na mesma pasta dos scripts.
 
-## 11. Criar a configuração MQTT local
-
-Para não precisar digitar todas as variáveis MQTT novamente em cada terminal, utilize um arquivo local `.env`.
-
-Esse arquivo será usado somente na Raspberry Pi da bancada e **não será enviado ao Git**, pois o repositório já ignora arquivos chamados `.env`.
-
-Na pasta do classificador:
-
-```bash
-cd ~/pnaat-handson/vision/classificador_engrenagens
-cp .env.example .env
-nano .env
-```
-
-Preencha:
+SHA-256 esperado:
 
 ```text
-PNAAT_MQTT_HOST=127.0.0.1
-PNAAT_MQTT_PORT=1883
-PNAAT_MQTT_USERNAME=pnaat
-PNAAT_MQTT_PASSWORD='SUA_SENHA_MQTT'
-PNAAT_TOPIC_PREFIX=pnaat
-PNAAT_MODEL_PATH=./best.pt
+fd7c021806c16d44fb26c76eaeb2a4ba469627a9bce12da198bc98acf7ea2ed2
 ```
 
-Substitua `SUA_SENHA_MQTT` pela mesma senha criada para o usuário MQTT `pnaat` durante a instalação do Mosquitto.
-
-Proteja o arquivo:
-
-```bash
-chmod 600 .env
-```
-
-### 11.1 Carregar as variáveis no terminal
-
-Sempre que abrir um novo terminal para executar a visão, faça:
-
-```bash
-cd ~/pnaat-handson/vision/classificador_engrenagens
-source .venv/bin/activate
-
-set -a
-source .env
-set +a
-```
-
-O comando `set -a` faz com que as variáveis lidas do `.env` sejam exportadas para os programas iniciados nesse terminal.
-
-Confira a configuração sem mostrar a senha:
-
-```bash
-printf "HOST=%s\nPORT=%s\nUSER=%s\nPREFIX=%s\nMODEL=%s\n" \
-  "$PNAAT_MQTT_HOST" \
-  "$PNAAT_MQTT_PORT" \
-  "$PNAAT_MQTT_USERNAME" \
-  "$PNAAT_TOPIC_PREFIX" \
-  "$PNAAT_MODEL_PATH"
-```
-
-> O `.env` contém a senha MQTT em texto local. Mantenha a permissão `600`, não copie esse arquivo para a apostila e não o envie ao Git.
-
-## 12. Abrir um monitor MQTT
-
-Abra **outro terminal** na Raspberry Pi.
-
-Nesse novo terminal, carregue a mesma configuração:
-
-```bash
-cd ~/pnaat-handson/vision/classificador_engrenagens
-
-set -a
-source .env
-set +a
-```
-
-Depois execute:
-
-```bash
-docker exec -it pnaat-mosquitto \
-  mosquitto_sub \
-  -h localhost \
-  -p 1883 \
-  -u pnaat \
-  -P "$PNAAT_MQTT_PASSWORD" \
-  -t 'pnaat/#' \
-  -v
-```
-
-Deixe esse terminal aberto. Ele mostrará as mensagens publicadas pela visão e pelo ESP32.
-
-## 13. Executar o sistema completo
-
-Volte ao terminal usado para executar o classificador.
-
-Se esse terminal foi fechado ou se você abriu um novo, repita apenas:
-
-```bash
-cd ~/pnaat-handson/vision/classificador_engrenagens
-source .venv/bin/activate
-
-set -a
-source .env
-set +a
-```
-
-Para operação normal sem interface gráfica:
-
-```bash
-python gear_image_class_noScreen.py
-```
-
-Para acompanhar imagem, ROI, trigger e resultado em uma sessão gráfica da Raspberry Pi:
-
-```bash
-python gear_image_class.py
-```
-
-As duas versões usam a mesma lógica de detecção e publicam os mesmos tópicos MQTT.
-
-Ao iniciar, o programa deve confirmar a conexão com o broker. Depois, ao detectar uma peça, ele:
-
-1. captura a ROI;
-2. classifica a imagem;
-3. converte `OK` em `APROVADA`;
-4. converte `NOK` em `REJEITADA`;
-5. incrementa e persiste o contador da câmera;
-6. publica a contagem;
-7. publica o resultado da classificação.
-
-## 14. Rearme entre peças
-
-Depois de classificar uma peça, o programa entra em estado de espera até confirmar que a região de detecção ficou livre.
-
-Ao iniciar, mantenha a esteira vazia. O programa mede 30 frames e calcula a mediana de pixels pretos da região de trigger. Esse valor vira o `baseline` do fundo.
-
-A lógica atual usa a diferença absoluta em relação ao baseline, com histerese e confirmação por vários frames:
+Classes:
 
 ```text
-CALIBRATION_FRAMES    = 30
-TRIGGER_DELTA_PIXELS  = 10
-REARM_DELTA_PIXELS    = 3
-REARM_FRAMES          = 5
+NOK
+OK
 ```
 
-Exemplo: se a esteira vazia produzir cerca de 30 pixels pretos, o programa passa a considerar `baseline=30`. Uma leitura de 31 tem `delta=1`, não uma peça.
-
-Funcionamento:
+Mapeamento usado pelo sistema:
 
 ```text
-calibração com esteira vazia
-        ↓
-baseline calculado
-        ↓
-delta > 10
-        ↓
-peça detectada e classificada
-        ↓
-aguarda saída da peça
-        ↓
-delta <= 3 por 5 frames consecutivos
-        ↓
-sistema rearmado
-        ↓
-próxima peça pode ser detectada
+OK  → APROVADA
+NOK → REJEITADA
 ```
 
-Depois de cada classificação deve aparecer:
+## Configuração local
+
+O arquivo:
 
 ```text
-[CAM] aguardando saída da peça para rearme
+.env.example
 ```
 
-E, após a região ficar livre:
+é apenas um modelo.
+
+Durante a instalação, o guia principal orienta criar:
 
 ```text
-[CAM] sistema rearmado
+.env
 ```
 
-A confirmação por 5 frames evita rearme falso por ruído ou variação momentânea da imagem. O limite de rearme não exige mais zero pixels pretos, porque pequenas sombras ou ruídos da câmera podem impedir que a contagem chegue exatamente a zero.
+Esse arquivo contém a configuração MQTT local e é ignorado pelo Git.
 
-## 15. Tópicos publicados
-
-Contagem:
+## Tópicos publicados
 
 ```text
 pnaat/contagem/camera
-```
-
-Exemplo:
-
-```json
-{"count":17,"source":"camera_yolo"}
-```
-
-Resultado:
-
-```text
 pnaat/visao/resultado
 ```
 
-Exemplo:
-
-```json
-{
-  "id_camera":17,
-  "resultado":"APROVADA",
-  "confianca":0.9342,
-  "classe_modelo":"OK",
-  "source":"camera_yolo",
-  "timestamp_utc":"2026-10-16T16:00:00.000+00:00"
-}
-```
-
-Mapeamento:
+O ESP32 usa principalmente:
 
 ```text
-OK  -> APROVADA
-NOK -> REJEITADA
-outra classe -> INCONCLUSIVA
+id_camera
+resultado
+confianca
 ```
 
-O ESP32 utiliza `id_camera`, `resultado` e `confianca` para associar a classificação à passagem da peça pelo sensor final.
+do payload publicado em `pnaat/visao/resultado`.
 
-## 16. Diagnóstico do detector
+## Instalação e execução
 
-Durante a execução, o classificador imprime uma linha de diagnóstico aproximadamente uma vez por segundo:
+Todo o procedimento, incluindo câmera, ambiente virtual, requirements, modelo, configuração MQTT, execução sem tela, execução visual e teste integrado está concentrado em:
 
-```text
-[DET] estado=ARMADO pixels_pretos=30 baseline=30 delta=0 trigger_delta=>10 rearme_delta=<=3 frames_livres=0/5
-```
+[**Visão de máquina — instalação e operação**](../README.md)
 
-Quando a região de contagem cruza o limiar de detecção, aparece imediatamente:
-
-```text
-[DET] trigger detectado: pixels_pretos=52 baseline=30 delta=22 > 10; iniciando inferência YOLO
-[AI] inferência concluída em 85.4 ms
-```
-
-Interpretação:
-
-- se o `delta` nunca ultrapassar `10` durante a passagem da peça, a peça não está alterando suficientemente a região de contagem; nesse caso, ajuste a ROI/posição física antes de alterar o limiar;
-- se aparecer `trigger detectado` mas não aparecer `inferência concluída`, o problema está na execução do modelo;
-- se a inferência terminar mas o sistema ficar em `AGUARDANDO_REARME`, observe `pixels_pretos` e `frames_livres`;
-- o sistema volta a `ARMADO` depois de cinco frames consecutivos com `delta <= 3` em relação ao baseline.
-
-## 17. Resultado esperado no monitor MQTT
-
-Ao passar uma engrenagem:
-
-```text
-pnaat/contagem/camera ...
-pnaat/visao/resultado ...
-```
-
-Depois, quando a mesma peça chegar ao sensor final do ESP32:
-
-```text
-pnaat/peca/resultado_final ...
-```
-
-## 18. Encerramento
-
-Use:
-
-```text
-Ctrl+C
-```
-
-O script encerra a câmera e a conexão MQTT de forma controlada.
-
-## 19. Checklist
-
-- [ ] OV5647 reconhecida por `rpicam-hello --list-cameras`;
-- [ ] `best.pt` presente na pasta;
-- [ ] SHA-256 do modelo confere;
-- [ ] `.venv` criado com `--system-site-packages`;
-- [ ] `.venv` ativado;
-- [ ] requirements instalados;
-- [ ] imports validados;
-- [ ] Ultralytics 8.4.168 confirmado;
-- [ ] execução de `gear_image_class_noScreen.py --no-mqtt` funciona;
-- [ ] versão visual `gear_image_class.py --no-mqtt` abre as janelas e classifica uma peça em sessão gráfica;
-- [ ] Mosquitto está em execução;
-- [ ] variáveis MQTT configuradas;
-- [ ] conexão MQTT confirmada;
-- [ ] `pnaat/contagem/camera` publicado;
-- [ ] `pnaat/visao/resultado` publicado;
-- [ ] após retirar a peça aparece `[CAM] sistema rearmado`;
-- [ ] pelo menos duas peças consecutivas são detectadas e classificadas;
-- [ ] ESP32 recebe o resultado;
-- [ ] associação visão/sensor é concluída;
-- [ ] LEDs APROVADA/REJEITADA respondem conforme a classificação.
-
-
-Com todos esses itens concluídos, a aquisição, classificação, MQTT e associação física estão funcionando em conjunto.
-
-## Próxima etapa — Node-RED e InfluxDB
-
-Agora que o ESP32 e a visão já produzem os dados reais do sistema, continue em:
-
-[**Configuração Node-RED → MQTT → InfluxDB**](../../docs/node-red-influxdb.md)
-
-Nessa etapa os tópicos MQTT serão recebidos pelo Node-RED e gravados no InfluxDB para posterior visualização no Grafana.
+Manter um único roteiro de instalação evita que versões diferentes do procedimento sejam seguidas durante o workshop.
