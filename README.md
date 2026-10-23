@@ -157,7 +157,7 @@ Ao final desse guia, siga o link indicado para a visão de máquina.
 
 Com o MING e o ESP32 já funcionando, siga:
 
-[**Instalação e execução do classificador de engrenagens**](vision/classificador_engrenagens/README.md)
+[**Visão de máquina — instalação e operação**](vision/README.md)
 
 O repositório já foi clonado na etapa 1. Não é necessário cloná-lo novamente.
 
@@ -175,7 +175,7 @@ O guia conduz por:
 - confirmação de que o ESP32 recebe o resultado da classificação;
 - validação da associação câmera ↔ sensor e dos LEDs.
 
-O arquivo [vision/README.md](vision/README.md) permanece como referência da arquitetura e dos demais scripts. O roteiro operacional de instalação é o `README.md` dentro de `vision/classificador_engrenagens/`.
+O arquivo [vision/README.md](vision/README.md) é o roteiro oficial e completo desta etapa. O `README.md` dentro de `vision/classificador_engrenagens/` permanece apenas como referência dos arquivos do classificador.
 
 **Critério para avançar:** a visão deve publicar `pnaat/visao/resultado` e o ESP32 deve associar a classificação à passagem física da peça, publicando `pnaat/peca/resultado_final`.
 
