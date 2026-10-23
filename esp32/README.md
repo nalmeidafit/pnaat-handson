@@ -2,6 +2,21 @@
 
 Projeto do **PNAAT Hands-on** para **ESP-IDF v5.5.2** e **ESP32-S3**.
 
+## Pré-requisitos desta etapa
+
+Antes de configurar o ESP32, conclua a instalação da infraestrutura na Raspberry Pi conforme:
+
+[**Instalação completa do MING na Raspberry Pi 5**](../docs/instalacao-ming.md)
+
+O ESP32 depende do broker MQTT já em execução. Antes de continuar, confirme que você possui:
+
+- o endereço IPv4 da Raspberry Pi;
+- o usuário MQTT `pnaat`;
+- a senha MQTT definida durante a instalação do Mosquitto;
+- o Mosquitto funcionando na porta `1883`.
+
+A visão de máquina **ainda não precisa estar instalada**. Nesta etapa vamos deixar o ESP32 funcionando de forma independente, conectado ao Wi-Fi e ao Mosquitto, com o sensor físico validado. A integração real com a câmera será concluída na etapa seguinte.
+
 O firmware foi organizado para permitir habilitar ou desabilitar individualmente sensor, LEDs e controle da esteira pelo `menuconfig`. As opções desabilitadas não impedem a compilação das demais funções.
 
 ## Preparar o ambiente de desenvolvimento no Windows
@@ -375,3 +390,26 @@ Especialmente:
 - Integração visão + sensor;
 - Indicador visual da inspeção;
 - Controle da esteira.
+
+
+## Critério para concluir esta etapa
+
+Antes de seguir para a visão de máquina, confirme:
+
+- o firmware compila sem erro;
+- o ESP32 conecta ao Wi-Fi;
+- o ESP32 conecta ao Mosquitto da Raspberry Pi;
+- o sensor final é reconhecido;
+- cada passagem física incrementa a contagem uma única vez;
+- `pnaat/contagem/sensor` é publicado no broker;
+- `pnaat/sensor/presenca` muda de acordo com o estado do sensor.
+
+Não é necessário validar ainda uma classificação real da câmera. Essa validação depende da etapa de visão de máquina.
+
+## Próxima etapa — visão de máquina
+
+Com o ESP32 operacional e o Mosquitto já funcionando, continue em:
+
+[**Instalação e execução do classificador de engrenagens**](../vision/classificador_engrenagens/README.md)
+
+Nessa etapa a Raspberry Pi será preparada para capturar as imagens da OV5647, executar o modelo YOLO, publicar `pnaat/visao/resultado` e finalmente testar a associação câmera ↔ sensor no ESP32.
