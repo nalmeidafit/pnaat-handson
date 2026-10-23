@@ -82,118 +82,142 @@ pnaat-handson/
     └── modelos-3d/
 ```
 
-## Ordem recomendada de preparação
+## Ordem recomendada de instalação
 
-### 1. Raspberry Pi / MING
+A instalação deve ser feita na ordem abaixo. A sequência foi definida para que cada módulo encontre suas dependências já instaladas e validadas antes de ser colocado em funcionamento.
+
+```text
+1. Raspberry Pi + MING
+   └─ Mosquitto, InfluxDB, Node-RED e Grafana em execução
+              ↓
+2. ESP32-S3
+   └─ Wi-Fi + MQTT + sensor final
+              ↓
+3. Visão de máquina
+   └─ câmera + YOLO + publicação MQTT
+              ↓
+4. Node-RED → InfluxDB
+   └─ recebe os dados reais e grava no banco
+              ↓
+5. Grafana
+   └─ consulta o InfluxDB e apresenta o dashboard
+```
+
+O **Mosquitto precisa existir antes do ESP32 e da visão**, pois ambos usam o broker MQTT. O **Node-RED/InfluxDB é configurado depois do ESP32 e da visão**, quando os produtores de dados já podem ser testados. O **Grafana fica por último**, pois depende dos dados já gravados no InfluxDB.
+
+### 1. Raspberry Pi + infraestrutura MING
 
 Comece em:
 
-[docs/instalacao-ming.md](docs/instalacao-ming.md)
+[**Instalação completa do MING na Raspberry Pi 5**](docs/instalacao-ming.md)
 
-Esse guia parte de uma Raspberry Pi 5 nova e inclui:
+Esse guia parte de uma Raspberry Pi 5 nova e conduz até:
 
 - atualização do Raspberry Pi OS;
-- Git e ferramentas básicas;
-- instalação do Docker Engine;
-- Docker Compose;
-- clone do repositório;
-- criação do `.env`;
-- criação do `mosquitto.conf`;
-- geração do `password.txt`;
-- correção de permissões;
-- inicialização dos quatro serviços;
-- testes de Mosquitto, InfluxDB, Node-RED e Grafana.
+- instalação das ferramentas básicas;
+- instalação do Docker Engine e Docker Compose;
+- clone deste repositório;
+- criação do `.env` da stack;
+- configuração do Mosquitto;
+- criação do usuário e senha MQTT;
+- inicialização de Mosquitto, InfluxDB, Node-RED e Grafana;
+- teste individual dos quatro serviços;
+- identificação do IP da Raspberry Pi.
+
+**Critério para avançar:** os quatro containers devem estar em execução e o teste de publicação/assinatura no Mosquitto deve funcionar.
+
+Ao final desse guia, siga o link indicado para a instalação do ESP32-S3.
 
 ### 2. ESP32-S3
 
-Consulte:
+Depois que o Mosquitto estiver operacional, siga:
 
-[esp32/README.md](esp32/README.md)
+[**ESP32-S3 — instalação do ambiente, configuração, compilação e gravação**](esp32/README.md)
 
-O firmware usa ESP-IDF v5.5.2 e possui:
+Essa etapa inclui:
 
-- Wi-Fi;
-- MQTT;
-- sensor final de contagem;
-- associação FIFO câmera ↔ sensor;
-- LEDs APROVADA/REJEITADA;
-- controle opcional de esteira;
-- OTA de desenvolvimento.
+- instalação do Visual Studio Code;
+- instalação da extensão oficial Espressif IDF;
+- instalação do ESP-IDF v5.5.2;
+- abertura do projeto;
+- configuração de Wi-Fi e MQTT;
+- configuração do sensor físico;
+- configuração dos LEDs;
+- compilação e gravação do firmware;
+- validação da conexão do ESP32 ao Mosquitto;
+- teste da contagem física.
+
+Neste momento a visão ainda não precisa estar instalada. O objetivo é deixar o ESP32 operacional e comunicando-se com o broker que já está rodando na Raspberry Pi.
+
+**Critério para avançar:** ESP32 conectado ao Wi-Fi e MQTT, com o sensor físico publicando sua contagem no broker.
+
+Ao final desse guia, siga o link indicado para a visão de máquina.
 
 ### 3. Visão de máquina
 
-Se você está seguindo este roteiro desde o item 1, o repositório **já está clonado** em:
-
-```text
-~/pnaat-handson
-```
-
-Para instalar as dependências da câmera e do classificador e chegar até o programa de visão funcionando, siga diretamente o guia operacional:
+Com o MING e o ESP32 já funcionando, siga:
 
 [**Instalação e execução do classificador de engrenagens**](vision/classificador_engrenagens/README.md)
 
-O primeiro comando dessa etapa será:
+O repositório já foi clonado na etapa 1. Não é necessário cloná-lo novamente.
 
-```bash
-cd ~/pnaat-handson/vision/classificador_engrenagens
-```
+O guia conduz por:
 
-O arquivo [vision/README.md](vision/README.md) permanece como visão geral da arquitetura de visão, aquisição de imagens e histórico dos scripts, mas **não é o roteiro principal de instalação**.
+- instalação das dependências da OV5647 e Picamera2;
+- teste da câmera;
+- criação do ambiente virtual Python;
+- instalação das dependências do classificador;
+- validação do modelo `best.pt`;
+- teste do classificador sem MQTT;
+- teste da versão com visualização;
+- criação da configuração MQTT local da visão;
+- execução integrada com o Mosquitto;
+- confirmação de que o ESP32 recebe o resultado da classificação;
+- validação da associação câmera ↔ sensor e dos LEDs.
 
-Ao final do guia operacional você terá validado:
+O arquivo [vision/README.md](vision/README.md) permanece como referência da arquitetura e dos demais scripts. O roteiro operacional de instalação é o `README.md` dentro de `vision/classificador_engrenagens/`.
 
-- câmera OV5647;
-- Picamera2;
-- ambiente virtual Python;
-- Ultralytics e dependências;
-- modelo `best.pt`;
-- classificador sem interface gráfica;
-- classificador com visualização;
-- integração MQTT.
+**Critério para avançar:** a visão deve publicar `pnaat/visao/resultado` e o ESP32 deve associar a classificação à passagem física da peça, publicando `pnaat/peca/resultado_final`.
 
-O classificador publica:
+Ao final desse guia, siga o link indicado para Node-RED e InfluxDB.
 
-```text
-pnaat/contagem/camera
-pnaat/visao/resultado
-```
+### 4. Node-RED → InfluxDB
 
-Exemplo de resultado:
+Com ESP32 e visão já produzindo dados MQTT reais, siga:
 
-```json
-{
-  "id_camera": 17,
-  "resultado": "APROVADA",
-  "confianca": 0.9342,
-  "classe_modelo": "OK",
-  "source": "camera_yolo"
-}
-```
+[**Configuração Node-RED → MQTT → InfluxDB**](docs/node-red-influxdb.md)
 
-O classificador usa o modelo oficial `best.pt`, validado para Ultralytics 8.4.168 e classes `NOK`/ `OK`. Em cada clone da bancada, confirme que o arquivo está em:
+Nessa etapa são configurados os fluxos que:
 
-```text
-vision/classificador_engrenagens/best.pt
-```
+- recebem `pnaat/peca/resultado_final`;
+- recebem `pnaat/contagem/sensor`;
+- transformam os payloads em Line Protocol;
+- gravam `pecas_producao` e `contagem_esteira` no InfluxDB;
+- validam a gravação tanto com mensagens manuais quanto com o sistema real.
 
-SHA-256 esperado:
+**Critério para avançar:** as duas measurements devem existir no InfluxDB e receber dados reais do protótipo.
 
-```text
-fd7c021806c16d44fb26c76eaeb2a4ba469627a9bce12da198bc98acf7ea2ed2
-```
+Ao final desse guia, siga o link indicado para o dashboard Grafana.
 
-### 4. Dados e dashboard
+### 5. Grafana
 
-- [Node-RED → InfluxDB](docs/node-red-influxdb.md)
-- [Grafana](docs/grafana.md)
+Somente depois que o InfluxDB estiver recebendo dados, siga:
 
-### 5. Montagens mecânicas
+[**Criação do dashboard Grafana**](docs/grafana.md)
 
-Os arquivos STL/STEP consolidados devem ficar em:
+Essa etapa cria e valida os painéis da Fábrica do Futuro usando os dados produzidos nas etapas anteriores.
+
+**Critério de conclusão:** todos os painéis devem apresentar corretamente dados de peças aprovadas, rejeitadas, confiança e contagem física.
+
+### 6. Montagens mecânicas
+
+Os arquivos STL/STEP consolidados ficam em:
 
 ```text
 montagens-mecanicas/modelos-3d/
 ```
+
+As montagens mecânicas devem ser realizadas de acordo com a configuração física da bancada e com os modelos disponibilizados nessa pasta.
 
 ## Estado atual
 
