@@ -281,68 +281,110 @@ Q
 
 Somente depois de validar câmera, modelo, calibração e classificação local continue para a integração MQTT.
 
-## 11. Configurar MQTT
+## 11. Criar a configuração MQTT local
 
-O script lê:
+Para não precisar digitar todas as variáveis MQTT novamente em cada terminal, utilize um arquivo local `.env`.
+
+Esse arquivo será usado somente na Raspberry Pi da bancada e **não será enviado ao Git**, pois o repositório já ignora arquivos chamados `.env`.
+
+Na pasta do classificador:
+
+```bash
+cd ~/pnaat-handson/vision/classificador_engrenagens
+cp .env.example .env
+nano .env
+```
+
+Preencha:
 
 ```text
-PNAAT_MQTT_HOST
-PNAAT_MQTT_PORT
-PNAAT_MQTT_USERNAME
-PNAAT_MQTT_PASSWORD
-PNAAT_TOPIC_PREFIX
-PNAAT_MODEL_PATH
+PNAAT_MQTT_HOST=127.0.0.1
+PNAAT_MQTT_PORT=1883
+PNAAT_MQTT_USERNAME=pnaat
+PNAAT_MQTT_PASSWORD='SUA_SENHA_MQTT'
+PNAAT_TOPIC_PREFIX=pnaat
+PNAAT_MODEL_PATH=./best.pt
 ```
 
-Como Mosquitto roda na mesma Raspberry Pi:
+Substitua `SUA_SENHA_MQTT` pela mesma senha criada para o usuário MQTT `pnaat` durante a instalação do Mosquitto.
+
+Proteja o arquivo:
 
 ```bash
-export PNAAT_MQTT_HOST=127.0.0.1
-export PNAAT_MQTT_PORT=1883
-export PNAAT_MQTT_USERNAME=pnaat
-export PNAAT_TOPIC_PREFIX=pnaat
-export PNAAT_MODEL_PATH="$PWD/best.pt"
+chmod 600 .env
 ```
 
-Digite a senha sem deixá-la gravada no histórico:
+### 11.1 Carregar as variáveis no terminal
+
+Sempre que abrir um novo terminal para executar a visão, faça:
 
 ```bash
-read -s -p "Senha MQTT: " PNAAT_MQTT_PASSWORD
-echo
-export PNAAT_MQTT_PASSWORD
+cd ~/pnaat-handson/vision/classificador_engrenagens
+source .venv/bin/activate
+
+set -a
+source .env
+set +a
 ```
+
+O comando `set -a` faz com que as variáveis lidas do `.env` sejam exportadas para os programas iniciados nesse terminal.
+
+Confira a configuração sem mostrar a senha:
+
+```bash
+printf "HOST=%s\nPORT=%s\nUSER=%s\nPREFIX=%s\nMODEL=%s\n" \
+  "$PNAAT_MQTT_HOST" \
+  "$PNAAT_MQTT_PORT" \
+  "$PNAAT_MQTT_USERNAME" \
+  "$PNAAT_TOPIC_PREFIX" \
+  "$PNAAT_MODEL_PATH"
+```
+
+> O `.env` contém a senha MQTT em texto local. Mantenha a permissão `600`, não copie esse arquivo para a apostila e não o envie ao Git.
 
 ## 12. Abrir um monitor MQTT
 
-Em outro terminal da Raspberry Pi, substitua `SUA_SENHA_MQTT` pela senha definida para o usuário MQTT `pnaat` durante a instalação do Mosquitto:
+Abra **outro terminal** na Raspberry Pi.
+
+Nesse novo terminal, carregue a mesma configuração:
 
 ```bash
-cd ~/pnaat-handson/docker
+cd ~/pnaat-handson/vision/classificador_engrenagens
 
+set -a
+source .env
+set +a
+```
+
+Depois execute:
+
+```bash
 docker exec -it pnaat-mosquitto \
   mosquitto_sub \
   -h localhost \
   -p 1883 \
   -u pnaat \
-  -P SUA_SENHA_MQTT \
+  -P "$PNAAT_MQTT_PASSWORD" \
   -t 'pnaat/#' \
   -v
 ```
 
-Deixe esse terminal aberto.
+Deixe esse terminal aberto. Ele mostrará as mensagens publicadas pela visão e pelo ESP32.
 
 ## 13. Executar o sistema completo
 
-Volte ao terminal do classificador.
+Volte ao terminal usado para executar o classificador.
 
-Se abriu um novo terminal, reative o ambiente:
+Se esse terminal foi fechado ou se você abriu um novo, repita apenas:
 
 ```bash
 cd ~/pnaat-handson/vision/classificador_engrenagens
 source .venv/bin/activate
-```
 
-Reconfigure as variáveis MQTT caso elas não existam nesse novo shell.
+set -a
+source .env
+set +a
+```
 
 Para operação normal sem interface gráfica:
 
@@ -350,7 +392,7 @@ Para operação normal sem interface gráfica:
 python gear_image_class_noScreen.py
 ```
 
-Para acompanhar a imagem, ROI, trigger e resultado em uma sessão gráfica da Raspberry Pi:
+Para acompanhar imagem, ROI, trigger e resultado em uma sessão gráfica da Raspberry Pi:
 
 ```bash
 python gear_image_class.py
@@ -358,7 +400,7 @@ python gear_image_class.py
 
 As duas versões usam a mesma lógica de detecção e publicam os mesmos tópicos MQTT.
 
-Ao detectar uma peça, o programa:
+Ao iniciar, o programa deve confirmar a conexão com o broker. Depois, ao detectar uma peça, ele:
 
 1. captura a ROI;
 2. classifica a imagem;
@@ -531,3 +573,14 @@ O script encerra a câmera e a conexão MQTT de forma controlada.
 - [ ] ESP32 recebe o resultado;
 - [ ] associação visão/sensor é concluída;
 - [ ] LEDs APROVADA/REJEITADA respondem conforme a classificação.
+
+
+Com todos esses itens concluídos, a aquisição, classificação, MQTT e associação física estão funcionando em conjunto.
+
+## Próxima etapa — Node-RED e InfluxDB
+
+Agora que o ESP32 e a visão já produzem os dados reais do sistema, continue em:
+
+[**Configuração Node-RED → MQTT → InfluxDB**](../../docs/node-red-influxdb.md)
+
+Nessa etapa os tópicos MQTT serão recebidos pelo Node-RED e gravados no InfluxDB para posterior visualização no Grafana.
