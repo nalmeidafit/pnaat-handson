@@ -1,6 +1,13 @@
 # Node-RED → MQTT → InfluxDB
 
-Este guia parte de uma instalação MING já concluída conforme [instalacao-ming.md](instalacao-ming.md). O objetivo é configurar o Node-RED desde uma instalação vazia até receber mensagens MQTT do projeto e gravá-las no InfluxDB.
+Este guia parte de uma instalação MING já concluída conforme [instalacao-ming.md](instalacao-ming.md).
+
+Na sequência recomendada do workshop, o ESP32 e a visão de máquina também já devem estar instalados e validados:
+
+- [ESP32-S3](../esp32/README.md)
+- [Visão de máquina](../vision/classificador_engrenagens/README.md)
+
+O objetivo agora é configurar o Node-RED desde uma instalação vazia até receber as mensagens MQTT reais do projeto e gravá-las no InfluxDB. Os testes manuais continuam disponíveis para diagnosticar cada trecho do fluxo, mas o critério final desta etapa é receber dados produzidos pelo sistema real.
 
 Ao final deste procedimento, o fluxo validado será:
 
@@ -783,4 +790,12 @@ Verifique o Debug imediatamente antes do HTTP Request e confirme que `msg.payloa
 - [ ] fluxo foi salvo com Deploy;
 - [ ] cópia JSON do fluxo foi exportada.
 
-Com todos os itens marcados, a integração Node-RED → InfluxDB está pronta para o dashboard Grafana.
+Com todos os itens marcados, a integração Node-RED → InfluxDB está pronta.
+
+## Próxima etapa — dashboard Grafana
+
+Somente depois que `pecas_producao` e `contagem_esteira` estiverem recebendo dados no InfluxDB, continue em:
+
+[**Grafana — criação completa do dashboard da Fábrica do Futuro**](grafana.md)
+
+O Grafana depende desses dados já existentes; por isso esta etapa deve ser concluída antes da criação dos painéis.
