@@ -49,76 +49,98 @@ const token = env.get("INFLUXDB_TOKEN");
 
 let data = msg.payload;
 
-// Se vier como Buffer
+// Buffer -> String
 if (Buffer.isBuffer(data)) {
     data = data.toString("utf8");
 }
 
-// Se vier como string JSON
+// String JSON -> Objeto
 if (typeof data === "string") {
     try {
         data = JSON.parse(data);
     } catch (err) {
-        node.error("Payload MQTT não é JSON válido", msg);
+        node.error("Payload não é JSON válido", msg);
         return null;
     }
 }
 
-// Validação dos campos obrigatórios
-if (
-    data == null ||
-    typeof data.id_camera !== "number" ||
-    typeof data.resultado !== "string"
-) {
-    node.warn("Conteúdo recebido:");
-    node.warn(data);
+let lines = [];
 
+//
+// CONTAGEM DA ESTEIRA
+//
+if (typeof data.count === "number") {
+    const count = Math.trunc(data.count);
+
+    lines.push(
+        `contagem_esteira,origem=sensor_final count=${count}i`
+    );
+}
+
+//
+// CLASSIFICAÇÃO DAS PEÇAS
+//
+if (
+    typeof data.id_camera === "number" &&
+    typeof data.resultado === "string"
+) {
+    const resultado = data.resultado.toUpperCase();
+
+    let aprovada;
+
+    if (
+        resultado === "APROVADA" ||
+        resultado === "APROVADO" ||
+        resultado === "OK"
+    ) {
+        aprovada = 1;
+
+    } else if (
+        resultado === "REJEITADA" ||
+        resultado === "REJEITADO" ||
+        resultado === "NOK"
+    ) {
+        aprovada = 0;
+
+    } else {
+        node.warn(`Resultado inválido recebido: ${resultado}`);
+        return null;
+    }
+
+    const idCamera = Math.trunc(data.id_camera);
+
+    const confianca =
+        typeof data.confianca === "number"
+            ? data.confianca
+            : 0.0;
+
+    const classeModelo =
+        typeof data.classe_modelo === "string"
+            ? data.classe_modelo.replace(/ /g, "_")
+            : "desconhecida";
+
+    lines.push(
+        `pecas_producao,linha=esteira1,id_camera=${idCamera},classe=${classeModelo} ` +
+        `aprovada_num=${aprovada}i,confianca=${confianca}`
+    );
+
+    node.status({
+        fill: "green",
+        shape: "dot",
+        text: `${resultado} (${confianca})`
+    });
+}
+
+// Nada válido encontrado
+if (lines.length === 0) {
     node.error(
-        "Payload sem id_camera ou resultado válido",
+        "Payload não contém dados válidos para gravação",
         msg
     );
     return null;
 }
 
-// Normaliza o resultado
-const resultado = data.resultado.toUpperCase();
-
-// Converte para inteiro
-let aprovada;
-
-if (
-    resultado === "APROVADA" ||
-    resultado === "APROVADO" ||
-    resultado === "OK"
-) {
-    aprovada = 1;
-
-} else if (
-    resultado === "REJEITADA" ||
-    resultado === "REJEITADO" ||
-    resultado === "NOK"
-) {
-    aprovada = 0;
-
-} else {
-    node.warn(`Resultado inválido recebido: ${resultado}`);
-    return null;
-}
-
-// Campos opcionais
-const idCamera = Math.trunc(data.id_camera);
-
-const confianca =
-    typeof data.confianca === "number"
-        ? data.confianca
-        : 0.0;
-
-const classeModelo =
-    typeof data.classe_modelo === "string"
-        ? data.classe_modelo.replace(/ /g, "_")
-        : "desconhecida";
-
-// Configuração HTTP
+// Configuração HTTP para InfluxDB
 msg.method = "POST";
 
 msg.url =
@@ -132,18 +154,8 @@ msg.headers = {
     "Content-Type": "text/plain; charset=utf-8"
 };
 
-// Line Protocol InfluxDB
-msg.payload =
-    `pecas_producao,linha=esteira1,id_camera=${idCamera},classe=${classeModelo} ` +
-    `aprovada_num=${aprovada}i,` +
-    `confianca=${confianca}`;
-
-// Debug opcional
-node.status({
-    fill: "green",
-    shape: "dot",
-    text: `${resultado} (${confianca})`
-});
+// Múltiplas medições na mesma escrita
+msg.payload = lines.join("\n");
 
 return msg;
 ```
