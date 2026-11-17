@@ -23,9 +23,17 @@ typedef struct {
 static QueueHandle_t s_sensor_queue;
 static QueueHandle_t s_vision_queue;
 
+static bool s_have_last_vision_id;
+static uint32_t s_last_vision_id;
+
 static int64_t timeout_us(void)
 {
     return (int64_t)CONFIG_PNAAT_MATCH_TIMEOUT_MS * 1000LL;
+}
+
+static int64_t sensor_grace_us(void)
+{
+    return (int64_t)CONFIG_PNAAT_MATCH_SENSOR_GRACE_MS * 1000LL;
 }
 
 static void purge_expired_sensor(int64_t now)
@@ -35,14 +43,15 @@ static void purge_expired_sensor(int64_t now)
     while (
         s_sensor_queue != NULL &&
         xQueuePeek(s_sensor_queue, &item, 0) == pdTRUE &&
-        (now - item.timestamp_us) > timeout_us()
+        (now - item.timestamp_us) > sensor_grace_us()
     ) {
         xQueueReceive(s_sensor_queue, &item, 0);
 
         ESP_LOGW(
             TAG,
-            "Contagem física %lu expirou sem resultado de visão.",
-            (unsigned long)item.sensor_count
+            "Contagem física %lu descartada: visão não chegou em %d ms.",
+            (unsigned long)item.sensor_count,
+            CONFIG_PNAAT_MATCH_SENSOR_GRACE_MS
         );
     }
 }
@@ -104,11 +113,15 @@ esp_err_t piece_matcher_init(void)
         return ESP_ERR_NO_MEM;
     }
 
+    s_have_last_vision_id = false;
+    s_last_vision_id = 0;
+
     ESP_LOGI(
         TAG,
-        "Sincronização visão/sensor habilitada: fila=%d timeout=%d ms",
+        "Sincronização visão/sensor habilitada: fila=%d timeout_visao=%d ms grace_sensor=%d ms",
         CONFIG_PNAAT_MATCH_QUEUE_DEPTH,
-        CONFIG_PNAAT_MATCH_TIMEOUT_MS
+        CONFIG_PNAAT_MATCH_TIMEOUT_MS,
+        CONFIG_PNAAT_MATCH_SENSOR_GRACE_MS
     );
 
     return ESP_OK;
@@ -177,6 +190,21 @@ bool piece_matcher_on_vision(
         return false;
     }
 
+    if (
+        s_have_last_vision_id &&
+        camera_id == s_last_vision_id
+    ) {
+        ESP_LOGW(
+            TAG,
+            "Resultado duplicado da câmera %lu ignorado.",
+            (unsigned long)camera_id
+        );
+        return false;
+    }
+
+    s_last_vision_id = camera_id;
+    s_have_last_vision_id = true;
+
     const int64_t now = esp_timer_get_time();
 
     purge_expired_sensor(now);
@@ -229,6 +257,9 @@ void piece_matcher_reset(void)
     if (s_vision_queue != NULL) {
         xQueueReset(s_vision_queue);
     }
+
+    s_have_last_vision_id = false;
+    s_last_vision_id = 0;
 
     ESP_LOGI(TAG, "Filas de sincronização limpas.");
 }
