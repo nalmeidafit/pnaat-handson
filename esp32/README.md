@@ -129,7 +129,7 @@ A partir desse ponto o projeto pode ser configurado pelo `menuconfig`, compilado
 - target fixo em ESP32-S3;
 - flash configurada para 8 MB;
 - E18-D80NK como sensor final;
-- debounce e contagem por transição livre → peça presente;
+- debounce, intervalo mínimo entre contagens e contagem por transição livre → peça presente;
 - persistência da contagem física em NVS;
 - publicação de presença e contagem por MQTT;
 - recepção do resultado da visão por MQTT;
@@ -260,6 +260,47 @@ O contador é incrementado somente na transição:
 ```text
 LIVRE → PEÇA PRESENTE
 ```
+
+Além do debounce elétrico, o firmware possui uma segunda proteção contra múltiplas contagens da mesma peça:
+
+```text
+Tempo mínimo entre contagens = 800 ms
+```
+
+Esse intervalo é configurável em:
+
+```text
+idf.py menuconfig
+  → PNAAT Hands-on
+    → Sensor final de contagem
+      → Tempo mínimo entre contagens (ms)
+```
+
+A lógica é:
+
+```text
+primeiro acionamento válido
+        ↓
+contagem +1
+        ↓
+bloqueia novas contagens por 800 ms
+        ↓
+transições do sensor ainda podem ser observadas
+        ↓
+somente após o intervalo uma nova peça pode incrementar o contador
+```
+
+O objetivo é impedir que dentes, recortes ou oscilações do sinal do E18-D80NK durante a passagem de uma única engrenagem gerem dois ou mais eventos `APP_EVENT_SENSOR_COUNT`.
+
+O debounce padrão permanece em 40 ms para filtrar ruídos curtos. O intervalo mínimo atua em outra escala e não depende da câmera.
+
+Se ainda ocorrer dupla contagem na bancada, aumente temporariamente o valor para:
+
+```text
+1000 ms
+```
+
+Se peças legítimas estiverem chegando com intervalo menor que o configurado, reduza o valor após medir o tempo real entre peças.
 
 O valor é salvo em NVS e restaurado após reinicialização.
 
