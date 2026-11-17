@@ -18,3 +18,9 @@ CONFIG_PNAAT_OTA_ENABLED=y
 CONFIG_PNAAT_MATCH_VISION_WITH_SENSOR=y
 CONFIG_PNAAT_MATCH_QUEUE_DEPTH=16
 CONFIG_PNAAT_MATCH_TIMEOUT_MS=30000
+
+# Evita múltiplas contagens durante a passagem da mesma engrenagem.
+CONFIG_PNAAT_COUNTER_SENSOR_MIN_INTERVAL_MS=800
+
+# Tolera pequena inversão de chegada entre sensor e MQTT sem deslocar a fila.
+CONFIG_PNAAT_MATCH_SENSOR_GRACE_MS=500
