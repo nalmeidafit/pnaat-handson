@@ -58,6 +58,16 @@ menu "PNAAT Hands-on"
             range 5 1000
             default 40
             depends on PNAAT_COUNTER_SENSOR_ENABLED
+
+        config PNAAT_COUNTER_SENSOR_MIN_INTERVAL_MS
+            int "Tempo mínimo entre contagens (ms)"
+            range 100 5000
+            default 800
+            depends on PNAAT_COUNTER_SENSOR_ENABLED
+            help
+                Após registrar uma peça, ignora novas transições de contagem
+                dentro deste intervalo para evitar múltiplas contagens da
+                mesma engrenagem.
     endmenu
 
     menu "Integração visão + sensor"
@@ -82,6 +92,16 @@ menu "PNAAT Hands-on"
                 Resultados ou detecções sem par são descartados após este
                 intervalo para evitar que uma mensagem antiga seja associada
                 a uma peça nova.
+
+        config PNAAT_MATCH_SENSOR_GRACE_MS
+            int "Janela para visão chegar após o sensor (ms)"
+            range 100 5000
+            default 500
+            help
+                A câmera está fisicamente antes do sensor final. Se o sensor
+                chegar primeiro por latência de rede, ele aguarda apenas esta
+                janela curta. Depois disso o evento físico é descartado para
+                não ser associado à classificação da próxima peça.
     endmenu
 
     menu "Indicador visual da inspeção"
