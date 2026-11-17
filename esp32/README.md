@@ -9,12 +9,13 @@ O firmware foi organizado para permitir habilitar ou desabilitar individualmente
 - target fixo em ESP32-S3;
 - flash configurada para 8 MB;
 - E18-D80NK como sensor final;
-- debounce e contagem por transição livre → peça presente;
+- debounce, intervalo mínimo entre contagens e contagem por transição livre → peça presente;
 - persistência da contagem física em NVS;
 - publicação de presença e contagem por MQTT;
 - recepção do resultado da visão por MQTT;
 - associação FIFO entre resultado da câmera e passagem no sensor final;
-- tolerância a inversão de chegada entre mensagem da câmera e sensor;
+- tolerância curta à inversão de chegada entre mensagem da câmera e sensor;
+- rejeição de `id_camera` duplicado recebido via MQTT QoS 1;
 - descarte de associações antigas por timeout;
 - LED de peça aprovada e LED de peça rejeitada;
 - validação de conflito entre GPIOs habilitados;
@@ -129,9 +130,27 @@ LED correspondente
 pnaat/peca/resultado_final
 ```
 
-Se houver atraso de rede e o sensor chegar primeiro, o evento físico também pode aguardar o resultado da visão.
+Como a câmera está fisicamente antes do sensor final, o fluxo esperado é que o resultado de visão chegue primeiro ao ESP32.
 
-As filas possuem profundidade padrão de 16 eventos e timeout padrão de 30 s. Isso evita associar uma mensagem antiga a uma peça nova.
+Se o sensor chegar primeiro por pequena latência de rede, o evento físico aguarda somente:
+
+```text
+500 ms
+```
+
+Esse valor é configurável em:
+
+```text
+PNAAT Hands-on
+  → Integração visão + sensor
+    → Janela para visão chegar após o sensor (ms)
+```
+
+Depois dessa janela, a contagem física sem resultado de visão é descartada do matcher. Isso é intencional: é melhor deixar uma peça sem indicação do que associar a classificação da peça seguinte e deslocar toda a sequência.
+
+Os resultados da câmera permanecem em FIFO e usam o timeout geral configurável, padrão de 30 s.
+
+O matcher também ignora a repetição imediata do mesmo `id_camera`. Essa proteção evita que uma eventual entrega duplicada de uma mensagem MQTT QoS 1 gere duas entradas para a mesma peça.
 
 ## Sensor final
 
@@ -141,7 +160,25 @@ O contador é incrementado somente na transição:
 LIVRE → PEÇA PRESENTE
 ```
 
-O valor é salvo em NVS e restaurado após reinicialização.
+Além do debounce de 40 ms, existe um bloqueio de novas contagens após uma peça válida:
+
+```text
+Tempo mínimo entre contagens = 800 ms
+```
+
+Durante essa janela, novas transições do sensor podem ser registradas no log, mas não incrementam a contagem nem entram no matcher.
+
+Isso evita que dentes, recortes ou oscilações do sensor durante a passagem da mesma engrenagem produzam duas peças físicas e desloquem a associação com a câmera.
+
+O valor de 800 ms pode ser ajustado em:
+
+```text
+PNAAT Hands-on
+  → Sensor final de contagem
+    → Tempo mínimo entre contagens (ms)
+```
+
+O valor da contagem é salvo em NVS e restaurado após reinicialização.
 
 O comando:
 
