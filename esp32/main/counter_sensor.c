@@ -25,6 +25,7 @@ static uint32_t s_count;
 static bool s_raw;
 static bool s_stable;
 static int64_t s_changed_us;
+static int64_t s_last_count_us;
 #endif
 
 static esp_err_t save_count(void)
@@ -99,6 +100,9 @@ static void task_counter(void *arg)
     const int64_t debounce_us =
         (int64_t)CONFIG_PNAAT_COUNTER_SENSOR_DEBOUNCE_MS * 1000LL;
 
+    const int64_t min_count_interval_us =
+        (int64_t)CONFIG_PNAAT_COUNTER_SENSOR_MIN_INTERVAL_MS * 1000LL;
+
     while (true) {
         const bool raw = is_active();
         const int64_t now = esp_timer_get_time();
@@ -137,24 +141,41 @@ static void task_counter(void *arg)
             queue_sensor_state(s_stable);
 
             if (!previous && s_stable) {
-                ++s_count;
+                const int64_t elapsed_us =
+                    now - s_last_count_us;
 
-                esp_err_t err = save_count();
-                if (err != ESP_OK) {
+                const bool count_allowed =
+                    s_last_count_us == 0 ||
+                    elapsed_us >= min_count_interval_us;
+
+                if (!count_allowed) {
                     ESP_LOGW(
                         TAG,
-                        "Falha ao salvar contagem: %s",
-                        esp_err_to_name(err)
+                        "Reacionamento ignorado: %lld ms desde a última contagem; mínimo=%d ms",
+                        (long long)(elapsed_us / 1000LL),
+                        CONFIG_PNAAT_COUNTER_SENSOR_MIN_INTERVAL_MS
                     );
+                } else {
+                    s_last_count_us = now;
+                    ++s_count;
+
+                    esp_err_t err = save_count();
+                    if (err != ESP_OK) {
+                        ESP_LOGW(
+                            TAG,
+                            "Falha ao salvar contagem: %s",
+                            esp_err_to_name(err)
+                        );
+                    }
+
+                    ESP_LOGI(
+                        TAG,
+                        "Contagem física: %lu",
+                        (unsigned long)s_count
+                    );
+
+                    queue_sensor_count();
                 }
-
-                ESP_LOGI(
-                    TAG,
-                    "Contagem física: %lu",
-                    (unsigned long)s_count
-                );
-
-                queue_sensor_count();
             }
         }
 
@@ -195,16 +216,18 @@ esp_err_t counter_sensor_init(QueueHandle_t queue)
     s_raw = is_active();
     s_stable = s_raw;
     s_changed_us = esp_timer_get_time();
+    s_last_count_us = 0;
 
     ESP_LOGI(
         TAG,
-        "Sensor habilitado: GPIO%d, nível ativo=%d, pull-up=%s, debounce=%d ms",
+        "Sensor habilitado: GPIO%d, nível ativo=%d, pull-up=%s, debounce=%d ms, intervalo mínimo=%d ms",
         CONFIG_PNAAT_COUNTER_SENSOR_GPIO,
         CONFIG_PNAAT_COUNTER_SENSOR_ACTIVE_LEVEL,
         CONFIG_PNAAT_COUNTER_SENSOR_PULLUP
             ? "SIM"
             : "NAO",
-        CONFIG_PNAAT_COUNTER_SENSOR_DEBOUNCE_MS
+        CONFIG_PNAAT_COUNTER_SENSOR_DEBOUNCE_MS,
+        CONFIG_PNAAT_COUNTER_SENSOR_MIN_INTERVAL_MS
     );
 
     ESP_LOGI(
@@ -246,5 +269,10 @@ bool counter_sensor_is_active(void)
 esp_err_t counter_sensor_reset(void)
 {
     s_count = 0;
+
+#if CONFIG_PNAAT_COUNTER_SENSOR_ENABLED
+    s_last_count_us = 0;
+#endif
+
     return save_count();
 }
