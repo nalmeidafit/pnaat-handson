@@ -78,6 +78,7 @@ static void purge_expired_vision(int64_t now)
 static void fill_match(
     pnaat_piece_match_t *match,
     uint32_t sensor_count,
+    int64_t sensor_timestamp_us,
     const pending_vision_t *vision
 )
 {
@@ -89,6 +90,27 @@ static void fill_match(
     match->camera_id = vision->camera_id;
     match->result = vision->result;
     match->confidence = vision->confidence;
+
+    const int64_t delta_us =
+        sensor_timestamp_us - vision->timestamp_us;
+
+    if (delta_us >= 0) {
+        ESP_LOGI(
+            TAG,
+            "Timing câmera=%lu -> sensor=%lu: visão chegou %lld ms antes do sensor",
+            (unsigned long)vision->camera_id,
+            (unsigned long)sensor_count,
+            (long long)(delta_us / 1000LL)
+        );
+    } else {
+        ESP_LOGI(
+            TAG,
+            "Timing câmera=%lu -> sensor=%lu: visão chegou %lld ms após o sensor",
+            (unsigned long)vision->camera_id,
+            (unsigned long)sensor_count,
+            (long long)((-delta_us) / 1000LL)
+        );
+    }
 }
 
 esp_err_t piece_matcher_init(void)
@@ -138,13 +160,25 @@ bool piece_matcher_on_sensor(
 
     const int64_t now = esp_timer_get_time();
 
+    ESP_LOGI(
+        TAG,
+        "Sensor recebido: contagem=%lu t=%lld ms",
+        (unsigned long)sensor_count,
+        (long long)(now / 1000LL)
+    );
+
     purge_expired_sensor(now);
     purge_expired_vision(now);
 
     pending_vision_t vision;
 
     if (xQueueReceive(s_vision_queue, &vision, 0) == pdTRUE) {
-        fill_match(match, sensor_count, &vision);
+        fill_match(
+            match,
+            sensor_count,
+            now,
+            &vision
+        );
         return true;
     }
 
@@ -207,6 +241,13 @@ bool piece_matcher_on_vision(
 
     const int64_t now = esp_timer_get_time();
 
+    ESP_LOGI(
+        TAG,
+        "Visão recebida no matcher: câmera=%lu t=%lld ms",
+        (unsigned long)camera_id,
+        (long long)(now / 1000LL)
+    );
+
     purge_expired_sensor(now);
     purge_expired_vision(now);
 
@@ -220,7 +261,12 @@ bool piece_matcher_on_vision(
             .timestamp_us = now,
         };
 
-        fill_match(match, sensor.sensor_count, &vision);
+        fill_match(
+            match,
+            sensor.sensor_count,
+            sensor.timestamp_us,
+            &vision
+        );
         return true;
     }
 
